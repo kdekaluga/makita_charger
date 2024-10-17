@@ -1,0 +1,14 @@
+*** Useful links ***
+
+avr-gcc ABI (registers usage, calling conversion, etc.):
+https://gcc.gnu.org/wiki/avr-gcc
+
+avr-gcc assembler .macro syntax:
+https://sourceware.org/binutils/docs/as/Macro.html
+
+avr-gcc in-line assembler (in Russian):
+https://microsin.net/programming/avr/avr-gcc-inline-assembler.html
+
+Atmel AVR assembler .macro syntax:
+http://www.rjhcoding.com/avr-asm-macros.php
+

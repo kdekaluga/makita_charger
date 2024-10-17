@@ -1,0 +1,235 @@
+#include "includes.h"
+
+void CheckForFailures()
+{
+    uint8_t failureState = g_failureState;
+
+    // Low power check.
+    // Rule: if power is continuously low for 500 ms, switch off the device.
+    // If power is good for at least 100 ms, switch device back on.
+    static int8_t lowPowerCounter = 0;
+    if (PINC & BV(PC_IN_POWER_OK))
+    {
+        lowPowerCounter += 5;
+        if (lowPowerCounter >= 50)
+        {
+            lowPowerCounter = 50;
+            failureState &= ~FAILURE_POWER_LOW;
+        }
+    }
+    else
+    {
+        if (--lowPowerCounter < 0)
+        {
+            lowPowerCounter = 0;
+            failureState |= FAILURE_POWER_LOW;
+        }
+    }
+
+    cli();
+    uint16_t voltage = g_adcVoltageAverage;
+    uint16_t current = g_adcCurrentAverage;
+    sei();
+
+    // Overvoltage check.
+    // Rule: if output voltage exceeds the set value by more than 1 V and output current is
+    // at least 150 mA for 150 ms, the overvoltage failure is signaled.
+    static int8_t overvoltageCounter = 0;
+    if (voltage > g_pidTargetVoltage && voltage - g_pidTargetVoltage > 170 && current > 50)
+    {
+        if (++overvoltageCounter >= 15)
+            failureState |= FAILURE_OVERVOLTAGE;
+    }
+    else
+    {
+        overvoltageCounter = 0;
+    }
+
+    // Overcurrent check.
+    // Rule: if output current exceeds 8A for 150 ms, the overcurrent failure is signaled.
+    static int8_t overcurrentCounter = 0;
+    if (current > 2670)
+    {
+        if (++overcurrentCounter >= 15)
+            failureState |= FAILURE_OVERCURRENT;
+    }
+    else
+    {
+        overcurrentCounter = 0;
+    }
+
+    if (failureState & FAILURE_ANY)
+    {
+        // Switch off output relay and PWM generator
+        PORTD &= ~BV(PD_RELAY);
+        g_pidMode = PID_MODE_OFF;
+        
+        // Clear FAILURE_NONE and failure counter
+        g_failureState = failureState & FAILURE_ANY;
+        return;
+    }
+
+    // We're good, allow PWM to run
+    if (failureState & FAILURE_NONE)
+    {
+        if (g_outOn)
+        {
+            if (g_pidMode == PID_MODE_OFF)
+                g_pidMode = PID_MODE_CC;
+        }
+        else
+        {
+            g_pidMode = PID_MODE_OFF;
+        }
+
+        return;
+    }
+
+    // Enable relay and wait 20 msec, then set the FAILURE_NONE flag.
+    // PWM will be switched on in the next CheckForFailures() call.
+    PORTD |= BV(PD_RELAY);
+    if (++failureState >= 3)
+        failureState = FAILURE_NONE;
+
+    g_failureState = failureState;
+}
+
+void ProcessEncoderButton()
+{
+    static uint16_t buttonDownTime = 0;
+    if (!(PIND & BV(PD_ENCODER_SWITCH)))
+    {
+        if (++buttonDownTime == 2)
+        {
+            g_encoderKey = EEncoderKey::Down;
+            g_keyBeepLengthLeft = g_settings.m_keyBeepLength;
+        }
+        else if (buttonDownTime == 100)
+        {
+            g_encoderKey = EEncoderKey::DownLong;
+            g_keyBeepLengthLeft = g_settings.m_keyBeepLength;
+        }
+        else if (buttonDownTime == 600)
+        {
+            utils::DoSoftReset();
+        }
+    }
+    else
+    {
+        if (buttonDownTime >= 2)
+            g_encoderKey = EEncoderKey::Up;
+
+        buttonDownTime = 0;
+    }
+}
+
+void ProcessKeyBeep()
+{
+    if (!g_keyBeepLengthLeft)
+        return;
+
+    ICR1H = HIBYTE(1000);
+    ICR1L = LOBYTE(1000);
+
+    OCR1AH = 0;
+    OCR1AL = (--g_keyBeepLengthLeft ? g_settings.m_keyBeepVolume : 0);
+}
+
+void RequestTemperature()
+{
+    if (twi::IsBusy())
+        return;
+
+    switch (g_tempRequesterState++)
+    {
+    case 0:
+        // Read temperature (result from the previous request), exchange bytes
+        *reinterpret_cast<uint8_t*>(&g_temperatureBoard) = *reinterpret_cast<uint8_t*>(twi::g_twiBuffer + 1);
+        *(reinterpret_cast<uint8_t*>(&g_temperatureBoard) + 1) = *reinterpret_cast<uint8_t*>(twi::g_twiBuffer);
+
+        // Set resolution to 12 bit
+        twi::g_twiBuffer[0] = 0x01;
+        twi::g_twiBuffer[1] = 0x60;
+        twi::SendBytes(TWI_ADDR_TMP100BOARD, twi::g_twiBuffer, 2);
+        break;
+
+    case 1:
+        // Select the temperature register
+        twi::g_twiBuffer[0] = 0x00;
+        twi::SendBytes(TWI_ADDR_TMP100BOARD, twi::g_twiBuffer, 1);
+        break;
+
+    case 2:
+        // Request the temperature
+        twi::g_twiBuffer[0] = 99;
+        twi::g_twiBuffer[1] = 0;
+        twi::RecvBytes(TWI_ADDR_TMP100BOARD, twi::g_twiBuffer, 2);
+
+    default:
+        g_tempRequesterState = 0;
+    }
+}
+
+void Timer100Hz()
+{
+    // Increments timer and time counters
+    ++g_100HzCounter;
+    if (++g_time[0] == 100)
+    {
+        g_time[0] = 0;
+        if (++g_time[1] == 60)
+        {
+            g_time[1] = 0;
+            if (++g_time[2] == 60)
+            {
+                g_time[2] = 0;
+                ++g_time[3];
+            }
+        }
+    }
+
+    CheckForFailures();
+    ProcessEncoderButton();
+    ProcessKeyBeep();
+    RequestTemperature();
+}
+
+int main()
+{
+    // Switch everything to input just in case
+    DDRB = DDRC = DDRD = 0;
+    PORTB = PORTC = PORTD = 0;
+
+    g_settings.m_keyBeepLength = 2;
+    g_settings.m_keyBeepVolume = 8;
+
+    g_settings.m_voltageOffset = 2;
+    g_settings.m_voltage4096Value = 24707;
+    g_settings.m_currentOffset = 0;
+    g_settings.m_current4096Value = 12580;
+
+    g_settings.m_psVoltageX1000 = 12000;
+    g_settings.m_psCurrentX1000 = 1500;
+
+    //
+
+    static const char pm_profileName[] PROGMEM = "Test 4.2 V profile"; //"Test 4.2 V profile";
+    memcpy_PF(screen::charger::g_profile.m_name, reinterpret_cast<uint_farptr_t>(pm_profileName), 18);
+    screen::charger::g_profile.m_nameLength = 18;
+    screen::charger::g_profile.m_chargeVoltageX1000 = 4200;
+    screen::charger::g_profile.m_chargeCurrentX1000 = 500;
+    screen::charger::g_profile.m_openVoltageX1000 = 4700;
+    screen::charger::g_profile.m_openCurrentX1000 = 30;
+    screen::charger::g_profile.m_minBatteryVoltageX1000 = 3000;
+    screen::charger::g_profile.m_restartChargeVoltageX1000 = 4100;
+    screen::charger::g_profile.m_use3rdPin = false;
+    screen::charger::g_profile.m_stopChargeCurrentPercent = 10;
+
+    utils::InitMcu();
+    display::Init();
+    
+    //screen::psupply::Show();
+    screen::charger::Show();
+
+    for (;;) {}
+}

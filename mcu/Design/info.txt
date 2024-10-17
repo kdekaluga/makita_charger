@@ -1,0 +1,2 @@
+Font DPI = 140
+Free Sans
