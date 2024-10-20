@@ -2,10 +2,6 @@
 
 namespace screen::psupply {
 
-#define CLR_VOLTAGE RGB_TO_CLR(128, 255, 0)
-#define CLR_CURRENT RGB_TO_CLR(255, 255, 0)
-#define CLR_WATTAGE RGB_TO_CLR(255, 128, 64)
-
 #define UI_OUT 0
 #define UI_TIME_CAPACITY 1
 #define UI_VOLTAGE1 2
@@ -235,13 +231,19 @@ void OnChangeValue(int8_t cursorPosition, int8_t delta)
     UpdateTargetValues();
 }
 
+bool OnLongClick(int8_t cursorPosition)
+{
+    return true;
+}
+
 static const display::UiScreen pm_powerSupplyScreen PROGMEM =
 {
     UI_ELEMENT_COUNT,
     &DrawBackground,
     &DrawElements,
     &OnClick,
-    &OnChangeValue
+    &OnChangeValue,
+    &OnLongClick
 };
 
 void Show()

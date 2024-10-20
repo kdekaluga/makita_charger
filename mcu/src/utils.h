@@ -35,9 +35,14 @@ void TimeCapacityReset();
 // Converts x100 temperature to the XXX.X string 
 void TemperatureToString(int16_t x100Temp);
 
+// Returns color that is used to draw board temperature value
 uint16_t GetBoardTempColor(uint16_t temperature);
 
+// Converts percent value to the XXX% string (4 chars)
 void PercentToString(uint8_t percent);
+
+// Converts signed 8-bit value to string
+void I8SToString(int8_t value);
 
 uint16_t ChangeI16ByDigit(uint16_t value, uint8_t digit, int8_t delta, uint16_t minValue, uint16_t maxValue);
 

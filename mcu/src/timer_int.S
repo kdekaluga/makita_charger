@@ -23,9 +23,9 @@ TIMER0_OVF_vect:
     sts     (g_pwmLowPos), R16
 
     ; if the target PWM is 0, disable it completely 
-    ldi     R17, BV(COM0A1) | BV(WGM01) | BV(WGM00)
+    ldi     R17, BV(COM0A1) | BV(COM0B1) | BV(WGM01) | BV(WGM00)
     brne    .+2
-    ldi     R17, BV(WGM01) | BV(WGM00)
+    ldi     R17, BV(COM0B1) | BV(WGM01) | BV(WGM00)
     out     (TCCR0A), R17
 
     ; Algorithm: we start the voltage value conversion on even interrupts and

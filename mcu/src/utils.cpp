@@ -50,7 +50,8 @@ void InitMcu()
     // Timer0: PWM and fan
     // Clear OC0A on Compare Match, set OC0A at BOTTOM (COM0A = 10),
     // FastPWM [0 -> 0xFF] (WGM0 = 011)
-    TCCR0A = BV(COM0A1) | BV(WGM01) | BV(WGM00);
+    OCR0A = OCR0B = 0;
+    TCCR0A = BV(COM0B1) | BV(WGM01) | BV(WGM00);
 
     // Enable overflow interrupt
     TIMSK0 = BV(TOIE0);
@@ -207,10 +208,10 @@ uint16_t GetBoardTempColor(uint16_t temperature)
         return CLR_GREEN;
 
     if (t < 74)
-        return RGB_TO_CLR((t - 58) << 4, 255, 0);
+        return RGB((t - 58) << 4, 255, 0);
 
     if (t < 90)
-        return RGB_TO_CLR(255, (89 - t) << 4, 0);
+        return RGB(255, (89 - t) << 4, 0);
 
     return CLR_RED;
 }
@@ -226,6 +227,18 @@ void PercentToString(uint8_t percent)
     }
     g_buffer[3] = '%';
 }
+
+void I8SToString(int8_t value)
+{
+    if (value >= 0)
+    {
+        //I8ToString(
+    }
+    else
+    {
+    }
+}
+
 
 uint16_t ChangeI16ByDigit(uint16_t value, uint8_t digit, int8_t delta, uint16_t minValue, uint16_t maxValue)
 {

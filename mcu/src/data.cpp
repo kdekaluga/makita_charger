@@ -4,6 +4,8 @@
 // Include the main include file to instantiate all defined variables
 #include "includes.h"
 
+#include <avr/eeprom.h>
+
 uint16_t SSettings::AdcVoltageToDisplayX1000(uint16_t adcVoltage)
 {
     // Vx1000 = (ADCv + m_voltageOffset)*m_voltage4096Value/4096
@@ -43,3 +45,57 @@ uint16_t SSettings::DisplayX1000CurrentToAdc(uint16_t x1000Current)
     
     return static_cast<uint16_t>(current);
 }
+
+SSettings* SSettings::GetEepromSettingsAddr()
+{
+    return reinterpret_cast<SSettings*>(EEPROM_ADDR_SETTINGS);
+}
+
+bool SSettings::AreEepromSettingsValid()
+{
+    return eeprom_read_word(&GetEepromSettingsAddr()->m_magicNumber) == SSettings::MagicNumber;
+}
+
+bool SSettings::ReadFromEeprom()
+{
+    if (!AreEepromSettingsValid())
+        return false;
+
+    eeprom_read_block(this, GetEepromSettingsAddr(), sizeof(SSettings));
+    return true;
+}
+
+void SSettings::SaveToEeprom()
+{
+    eeprom_update_block(this, GetEepromSettingsAddr(), sizeof(SSettings));
+}
+
+void SSettings::ResetToDefault()
+{
+    static const SSettings pm_defaultSettings PROGMEM = 
+    {
+        .m_keyBeepLength = 2,
+        .m_keyBeepVolume = 8,
+        .m_voltageOffset = 15,
+        .m_voltage4096Value = 24532,
+        .m_currentOffset = 0,
+        .m_current4096Value = 12580,
+        .m_psVoltageX1000 = 12000,
+        .m_psCurrentX1000 = 1000,
+        .m_magicNumber = MagicNumber,
+    };
+
+    memcpy_P(this, &pm_defaultSettings, sizeof(SSettings));
+}
+
+bool SSettings::AreSettingsChanged()
+{
+    uint8_t* eepromAddr = reinterpret_cast<uint8_t*>(GetEepromSettingsAddr());
+    uint8_t* dataAddr = reinterpret_cast<uint8_t*>(this);
+    for (uint8_t i = 0; i < sizeof(SSettings); ++i, ++eepromAddr, ++dataAddr)
+        if (*dataAddr != eeprom_read_byte(eepromAddr))
+            return true;
+
+    return false;
+}
+

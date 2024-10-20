@@ -5,6 +5,8 @@
 #define var extern
 #endif
 
+#define EEPROM_ADDR_SETTINGS 0x0000
+
 #include <stdint.h>
 
 // General purpose buffer
@@ -123,11 +125,24 @@ struct SSettings
     uint16_t m_psVoltageX1000;
     uint16_t m_psCurrentX1000;
 
+    // Magic number
+    static constexpr uint16_t MagicNumber = 0x9881; // CRC16 of "SSettings_v1"
+    uint16_t m_magicNumber;
+
     // Measurement conversion routines
     uint16_t AdcVoltageToDisplayX1000(uint16_t adcVoltage);
     uint16_t AdcCurrentToDisplayX1000(uint16_t adcCurrent);
     uint16_t DisplayX1000VoltageToAdc(uint16_t x1000Voltage);
     uint16_t DisplayX1000CurrentToAdc(uint16_t x1000Current);
+
+    static bool AreEepromSettingsValid();
+    bool ReadFromEeprom();
+    void SaveToEeprom();
+    void ResetToDefault();
+    bool AreSettingsChanged();
+
+private:
+    static SSettings* GetEepromSettingsAddr();
 };
 
 var SSettings g_settings;

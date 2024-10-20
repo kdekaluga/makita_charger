@@ -6,3 +6,4 @@
 .vscode/extensions.json
 disasm.bat
 program.asm
+eeprom.hex

@@ -18,6 +18,7 @@
 #include "display/display.h"
 #include "display/screen_power_supply.h"
 #include "display/screen_charger.h"
+#include "display/screen_calibration.h"
 #include "twi/twi.h"
 #include "charger_profile.h"
 

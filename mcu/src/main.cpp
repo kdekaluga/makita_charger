@@ -200,18 +200,8 @@ int main()
     DDRB = DDRC = DDRD = 0;
     PORTB = PORTC = PORTD = 0;
 
-    g_settings.m_keyBeepLength = 2;
-    g_settings.m_keyBeepVolume = 8;
-
-    g_settings.m_voltageOffset = 2;
-    g_settings.m_voltage4096Value = 24707;
-    g_settings.m_currentOffset = 0;
-    g_settings.m_current4096Value = 12580;
-
-    g_settings.m_psVoltageX1000 = 12000;
-    g_settings.m_psCurrentX1000 = 1500;
-
-    //
+    screen::calibration::g_voltageX1000 = 23500;
+    screen::calibration::g_currentX1000 = 6000;
 
     static const char pm_profileName[] PROGMEM = "Test 4.2 V profile"; //"Test 4.2 V profile";
     memcpy_PF(screen::charger::g_profile.m_name, reinterpret_cast<uint_farptr_t>(pm_profileName), 18);
@@ -227,9 +217,25 @@ int main()
 
     utils::InitMcu();
     display::Init();
-    
-    //screen::psupply::Show();
-    screen::charger::Show();
 
-    for (;;) {}
+    if (!g_settings.ReadFromEeprom())
+    {
+        static const char pm_invalidSettings[] PROGMEM =
+            "No valid settings\nwere found in the\nEEPROM. Settings\nare reset to\ntheir defaults.";
+
+        g_settings.ResetToDefault();
+        g_settings.SaveToEeprom();
+        display::Clear(CLR_BLACK);
+        display::SetSans12();
+        display::MessageBox(display::pm_warning, pm_invalidSettings, MB_WARNING | MB_OK);
+    }
+
+    for (;;)
+    {
+        screen::calibration::Show();
+        screen::charger::Show();
+        screen::psupply::Show();
+    }    
+    
+    //for (;;) {}
 }

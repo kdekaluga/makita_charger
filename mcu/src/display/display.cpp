@@ -191,9 +191,9 @@ uint8_t MessageBox(const char* caption, const char* text, uint8_t flags)
 
     uint16_t fillColor = CLR_BLUE;
     if (flags & MB_ERROR)
-        fillColor = RGB_TO_CLR(237, 20, 91);
+        fillColor = RGB(237, 20, 91);
     else if (flags & MB_WARNING)
-        fillColor = RGB_TO_CLR(0xD0, 0xD0, 0);
+        fillColor = RGB(0xD0, 0xD0, 0);
 
     uint8_t x = (DISPLAY_WIDTH - mbWidth)/2;
     uint8_t y = (DISPLAY_HEIGHT - mbHeight)/2;
@@ -334,6 +334,12 @@ void UiScreen::OnChangeElement(int8_t cursorPosition, int8_t delta) const
     func(cursorPosition, delta);
 }
 
+bool UiScreen::OnLongClick(int8_t cursorPosition) const
+{
+    UiOnLongClickFunc func = reinterpret_cast<UiOnLongClickFunc>(pgm_read_word(&m_onLongClickFunc));
+    return func(cursorPosition);
+}
+
 // Returns true if a message box was displayed and screen needs to be fully redrawn
 bool CheckFailureState()
 {
@@ -420,12 +426,27 @@ void ShowUiScreen(const UiScreen& screen)
         if (key == EEncoderKey::Down)
         {
             // If cursor was hidden, just show it, do nothing more
-            //if (cursorPosition & DSD_CURSOR_HIDDEN)
-            cursorPosition &= ~DSD_CURSOR_HIDDEN;
+            if (cursorPosition & DSD_CURSOR_HIDDEN)
+                cursorPosition &= ~DSD_CURSOR_HIDDEN;
             
             // Otherwise call the click function. If it returns true, switch the edit mode on/off
-            if (screen.OnClickElement(cursorPosition))
+            else if (screen.OnClickElement(cursorPosition))
                 bEditMode = !bEditMode;
+
+            tick100Hz = g_100HzCounter;
+            ticks = 0;
+        }
+        else if (key == EEncoderKey::DownLong)
+        {
+            if (screen.OnLongClick(cursorPosition))
+            {
+                // Switch output off and save settings before exiting
+                g_outOn = false;
+                g_settings.SaveToEeprom();
+
+                utils::Delay(2);
+                return;
+            }
 
             tick100Hz = g_100HzCounter;
             ticks = 0;

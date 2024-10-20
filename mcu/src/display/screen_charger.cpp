@@ -89,7 +89,7 @@ void Init()
 
 int8_t DrawBackground()
 {
-    static const uint8_t pm_bgObject[] PROGMEM =
+    static const uint8_t pm_bgObjects[] PROGMEM =
     {
         DRO_FILLRECT | 1, 0, 0, 240, 30,
         DRO_STR(61, 6 + 17, S, "CHARGER", 7),
@@ -106,13 +106,13 @@ int8_t DrawBackground()
             2, 115, 236, 2,
             0, 210, 240, 30,
 
-        DRO_BGCOLOR(RGB_TO_CLR(0, 0, 128)),
+        DRO_BGCOLOR(CLR_DARK_BLUE),
         DRO_FILLRECT | 1, 2, 32, 89, 83,
         //DRO_STR(25, 67, S, "Set:", 4),
         DRO_STR(17 + 13*3 + 6, 95, S, "A", 1),
         DRO_END
     };
-    display::DrawObjects(pm_bgObject, CLR_RED_BEAUTIFUL, CLR_WHITE);
+    display::DrawObjects(pm_bgObjects, CLR_RED_BEAUTIFUL, CLR_WHITE);
     display::SetSans12();
     display::SetColors(CLR_BLUE, CLR_WHITE);
     uint8_t width = display::GetTextWidthRam(g_profile.m_name, g_profile.m_nameLength);
@@ -289,13 +289,13 @@ void DrawBattery (int8_t chargeBarPos)
         {208, 49, 1, 23},
         {209, 55, 3, 11},
     };
-    display::FillRects(pm_batteryRects, 6, RGB_TO_CLR(192, 192, 192));
+    display::FillRects(pm_batteryRects, 6, CLR_GRAY);
 
     constexpr uint8_t cbWidth = CHARGE_BAR_WIDTH;
     constexpr uint8_t x = 126;
     constexpr uint8_t y = 47;
     constexpr uint8_t h = 27;
-    constexpr uint16_t color = RGB_TO_CLR(0, 192, 0);
+    constexpr uint16_t color = RGB(0, 192, 0);
 
     uint8_t width = g_batteryChargePixels;
     if (chargeBarPos <= 0)
@@ -375,7 +375,7 @@ void DrawElements(int8_t cursorPosition, uint8_t ticksElapsed)
         {
             DRO_STR(150, 67, S, "NO", 2),
             DRO_STR(114, 95, S, "BATTERY", 7),
-            DRO_FGCOLOR(RGB_TO_CLR(128, 128, 128)),
+            DRO_FGCOLOR(RGB(128, 128, 128)),
             DRO_STR(58, 143, S, "Insert battery", 14),
             DRO_STR(39, 170, S, "to start charging", 17),
             DRO_END
@@ -389,13 +389,13 @@ void DrawElements(int8_t cursorPosition, uint8_t ticksElapsed)
         {
             DRO_STR(122, 67, S, "INVALID", 7),
             DRO_STR(110, 95, S, "BATTERY!", 8),
-            DRO_FGCOLOR(RGB_TO_CLR(128, 128, 128)),
+            DRO_FGCOLOR(RGB(128, 128, 128)),
             DRO_STR(41, 141, S, "Battery voltage:", 16),
             DRO_END
         };
 
-        display::DrawObjects(pm_invalidBatteryObjects, CLR_BLACK, RGB_TO_CLR(255, 153, 54));
-        display::SetColor(RGB_TO_CLR(255, 153, 54));
+        display::DrawObjects(pm_invalidBatteryObjects, CLR_BLACK, RGB(255, 153, 54));
+        display::SetColor(RGB(255, 153, 54));
         display::SetSans18();
         utils::VoltageToString(voltage, true);
         display::PrintStringRam(68, 176, g_buffer, 6);
@@ -408,12 +408,12 @@ void DrawElements(int8_t cursorPosition, uint8_t ticksElapsed)
         if (state == EState::CHARGING && g_ticksInState >= 20)
         {
             display::SetSans18();
-            display::SetColor(RGB_TO_CLR(128, 255, 0));
+            display::SetColor(CLR_VOLTAGE);
             utils::VoltageToString(voltage, true);
             display::PrintStringRam(10, 150, g_buffer, 6);
 
             // Width = 19*3 + 9 + 23 = 89 px
-            display::SetColor(RGB_TO_CLR(255, 255, 0));
+            display::SetColor(CLR_CURRENT);
             utils::CurrentToString(current);
             display::PrintStringRam(141, 150, g_buffer, 5);
 
@@ -432,10 +432,10 @@ void DrawElements(int8_t cursorPosition, uint8_t ticksElapsed)
     {
         DrawBattery(100);
         static const char pm_chargeComplete[] PROGMEM = "Charge complete";
-        display::SetColor(RGB_TO_CLR(192, 192, 192));
+        display::SetColor(CLR_GRAY);
         display::PrintString(32, 141, pm_chargeComplete);
 
-        display::SetColor(RGB_TO_CLR(128, 255, 0));
+        display::SetColor(RGB(128, 255, 0));
         display::SetSans18();
         utils::CapacityToString();
         display::PrintStringRam(47, 176, g_buffer, 8);
@@ -456,10 +456,10 @@ void DrawElements(int8_t cursorPosition, uint8_t ticksElapsed)
 
     // Set current
     utils::CurrentToString(g_profile.m_chargeCurrentX1000);
-    display::DrawSettableDecimal(17, 95, 4, cursorPosition - UI_CURRENT1, CLR_WHITE, RGB_TO_CLR(0, 0, 128));
+    display::DrawSettableDecimal(17, 95, 4, cursorPosition - UI_CURRENT1, CLR_WHITE, CLR_DARK_BLUE);
 
     // Charge mode
-    display::SetBgColor(cursorPosition == UI_CCCMODE ? CLR_BG_CURSOR : RGB_TO_CLR(0, 0, 128));
+    display::SetBgColor(cursorPosition == UI_CCCMODE ? CLR_BG_CURSOR : CLR_DARK_BLUE);
     if (g_profile.m_cccMode)
     {
         // Width = 17*3 = 51 px
@@ -517,13 +517,32 @@ void OnChangeValue(int8_t cursorPosition, int8_t delta)
     }
 }
 
+bool OnLongClick(int8_t cursorPosition)
+{
+    static const char pm_exit[] PROGMEM = "Exit";
+    static const char pm_exitConfitmation[] PROGMEM =
+        "Are you sure want\nto exit charger?\nThis will stop\nthe charge.";
+
+    // If we're not charging, exit without confirmation
+    if (g_state != EState::MEASURING_VOLTAGE && g_state != EState::CHARGING)
+        return true;
+
+    display::SetSans12();
+    if (display::MessageBox(pm_exit, pm_exitConfitmation, MB_YESNO | MB_INFO | MB_DEFAULT_NO) == 0)
+        return true;
+
+    DrawBackground();
+    return false;
+}
+
 static const display::UiScreen pm_chargerScreen PROGMEM =
 {
     UI_ELEMENT_COUNT,
     &DrawBackground,
     &DrawElements,
     &OnClick,
-    &OnChangeValue
+    &OnChangeValue,
+    &OnLongClick
 };
 
 void Show()

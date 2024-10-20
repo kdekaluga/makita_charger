@@ -3,19 +3,25 @@
 #include "../data.h"
 #include <avr/pgmspace.h>
 
-#define RGB_TO_CLR(r, g, b) ((((r) & 0xF8) << 8) | (((g) & 0xFC) << 3) | (((b) & 0xF8) >> 3))
+#define RGB(r, g, b) ((((r) & 0xF8) << 8) | (((g) & 0xFC) << 3) | (((b) & 0xF8) >> 3))
 #define CLR_BLACK 0x0000
-#define CLR_RED RGB_TO_CLR(255, 0, 0)
-#define CLR_GREEN RGB_TO_CLR(0, 255, 0)
-#define CLR_BLUE RGB_TO_CLR(0, 0, 0xFF)
+#define CLR_RED RGB(255, 0, 0)
+#define CLR_GREEN RGB(0, 255, 0)
+#define CLR_BLUE RGB(0, 0, 0xFF)
+#define CLR_DARK_BLUE RGB(0, 0, 128)
 #define CLR_WHITE 0xFFFF
+#define CLR_GRAY RGB(192, 192, 192)
 
-#define CLR_RED_BEAUTIFUL RGB_TO_CLR(237, 20, 91)
+#define CLR_RED_BEAUTIFUL RGB(237, 20, 91)
 
-#define CLR_BG_ACTIVE RGB_TO_CLR(0, 128, 128)
-#define CLR_BG_INACTIVE RGB_TO_CLR(0, 64, 64)
+#define CLR_VOLTAGE RGB(128, 255, 0)
+#define CLR_CURRENT RGB(255, 255, 0)
+#define CLR_WATTAGE RGB(255, 128, 64)
 
-#define CLR_BG_CURSOR RGB_TO_CLR(0xC0, 0xC0, 0)
+#define CLR_BG_ACTIVE RGB(0, 128, 128)
+#define CLR_BG_INACTIVE RGB(0, 64, 64)
+
+#define CLR_BG_CURSOR RGB(0x80, 0x80, 0x80)
 #define CLR_FG_CURSOR CLR_BLACK
 
 namespace display {
@@ -132,6 +138,7 @@ using UiDrawBackgroundFunc = int8_t(*)();
 using UiDrawElementsFunc = void(*)(int8_t cursorPosition, uint8_t ticksElapsed);
 using UiOnClickElementFunc = bool(*)(int8_t cursorPosition);
 using UiOnChangeElementFunc = void(*)(int8_t cursorPosition, int8_t delta);
+using UiOnLongClickFunc = bool(*)(int8_t cursorPosition);
 
 struct UiScreen
 {
@@ -140,11 +147,13 @@ struct UiScreen
     UiDrawElementsFunc m_drawElementsFunc;
     UiOnClickElementFunc m_onClickElementFunc;
     UiOnChangeElementFunc m_onChangeElementFunc;
+    UiOnLongClickFunc m_onLongClickFunc;
 
     int8_t DrawBackground() const;
     void DrawElements(int8_t cursorPosition, uint8_t ticksElapsed) const;
     bool OnClickElement(int8_t cursorPosition) const;
     void OnChangeElement(int8_t cursorPosition, int8_t delta) const;
+    bool OnLongClick(int8_t cursorPosition) const;
 };
 
 void ShowUiScreen(const UiScreen& screen);
