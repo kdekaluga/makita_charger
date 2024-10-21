@@ -197,6 +197,15 @@ void ShowUiScreen(const UiScreen& screen);
 
 void DrawObjects(const uint8_t* objects, uint16_t bgColor, uint16_t fgColor);
 
+struct Menu
+{
+    uint8_t m_itemsCount;
+    const char* m_title;
+    const char* m_itemNames[];
+};
+
+uint8_t ShowMenu(const Menu& menu);
+
 // Functions written in assembler
 extern "C" {
 

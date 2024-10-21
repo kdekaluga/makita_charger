@@ -162,18 +162,27 @@ void OnChangeValue(int8_t cursorPosition, int8_t delta)
 
 bool OnLongClick(int8_t cursorPosition)
 {
-    /*
-    static const char pm_exitConfirmationTitle[] PROGMEM = "Calibration";
-    static const char pm_exitConfirmation[] PROGMEM = "Exit and save\nchanges?";
-    display::SetSans12();
-    if (display::MessageBox(pm_exitConfirmationTitle, pm_exitConfirmation, MB_INFO | MB_YESNO | MB_DEFAULT_NO) == 1)
+    static const char pm_menuTitle[] PROGMEM = "Calibration menu";
+    static const char pm_menu0[] PROGMEM = "Return";
+    static const char pm_menu1[] PROGMEM = "Reset values";
+    static const char pm_menu2[] PROGMEM = "Save and exit";
+    static const display::Menu pm_menu PROGMEM =
     {
-        DrawBackground();
-        return false;
-    }
-    */
+        3,
+        pm_menuTitle,
+        pm_menu0,
+        pm_menu1,
+        pm_menu2,
+    };
+    uint8_t item = display::ShowMenu(pm_menu);
+    if (item == 2)
+        return true;
 
-    return true;
+    if (item == 1)
+        g_settings.ReadFromEeprom();
+
+    DrawBackground();
+    return false;
 }
 
 static const display::UiScreen pm_calibrationScreen PROGMEM =

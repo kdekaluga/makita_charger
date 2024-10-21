@@ -527,6 +527,115 @@ void DrawObjects(const uint8_t* objects, uint16_t bgColor, uint16_t fgColor)
     }
 }
 
+uint8_t ShowMenu(const Menu& menu)
+{
+    SetSans12();
+    display::FillRect(0, 0, 240, 30, CLR_RED_BEAUTIFUL);
+    display::SetColors(CLR_RED_BEAUTIFUL, CLR_WHITE);
+    display::PrintString(8, 23, reinterpret_cast<const char*>(pgm_read_word(&menu.m_title)));
+
+    constexpr uint8_t yFirst = 59;
+
+    uint8_t currentPageNumber = 0;
+    uint8_t pageItemWidth = 0;
+    uint8_t cursorItemNumber = 0;
+    uint8_t itemCount = pgm_read_byte(&menu.m_itemsCount);
+    uint8_t pageCount = (itemCount + 6)/7;
+
+    const auto DrawItem = [&](int nItem, int x)
+    {
+        SetBgColor(nItem == cursorItemNumber ? CLR_BG_CURSOR : CLR_BLACK);
+
+        utils::I8ToString(nItem + 1, g_buffer);
+        g_buffer[3] = '.';
+        g_buffer[4] = ' ';
+        if (g_buffer[1] == '0')
+            g_buffer[1] = 127;
+
+        uint8_t y = yFirst + (nItem - currentPageNumber*7)*27;
+        x = PrintStringRam(x, y, g_buffer + 1, 4);
+        x = PrintString(x, y, reinterpret_cast<const char*>(pgm_read_word(&menu.m_itemNames[nItem])));
+        FillRect(x, y - 21, 120 + pageItemWidth/2 - x, 27, g_bgColor);
+    };
+
+    const auto CalcPageItemWidth = [&]()
+    {
+        uint8_t itemWidth = 0;
+        for (uint8_t i = 0; i < 7; ++i)
+        {
+            uint8_t nItem = currentPageNumber*7 + i;
+            if (nItem >= itemCount)
+                break;
+
+            uint8_t width = GetTextWidth(reinterpret_cast<const char*>(pgm_read_dword(&menu.m_itemNames[nItem])));
+            if (width > itemWidth)
+                itemWidth = width;
+        }
+
+        return itemWidth + 2*13 + 6 + 6;
+    };
+
+    const auto DrawPage = [&]()
+    {
+        g_buffer[0] = '1' + currentPageNumber;
+        g_buffer[1] = '/';
+        g_buffer[2] = '0' + pageCount;
+        g_bgColor = CLR_RED_BEAUTIFUL;
+        PrintStringRam(240 - 7 - 2*13 - 7, 23, g_buffer, 3);
+        
+        FillRect(0, 30, 240, 210, CLR_BLACK);
+        pageItemWidth = CalcPageItemWidth();
+        uint8_t x = (240 - pageItemWidth)/2;
+
+        for (uint8_t i = 0; i < 7; ++i)
+        {
+            uint8_t nItem = currentPageNumber*7 + i;
+            if (nItem >= itemCount)
+                break;
+            
+            DrawItem(nItem, x);
+        }
+    };
+
+    DrawPage();
+    for (;;)
+    {
+        EEncoderKey key = utils::GetEncoderKey();
+        if (key == EEncoderKey::Down)
+            return cursorItemNumber;
+
+        int8_t delta = utils::GetEncoderDelta();
+        if (!delta)
+        {
+            asm volatile ("Sleep");
+            continue;
+        }
+
+        uint8_t newItem = cursorItemNumber + delta;
+        if (newItem >= 128)
+            newItem = 0;
+
+        if (newItem >= itemCount)
+            newItem = itemCount - 1;
+        
+        uint8_t pageNumber = newItem/7;
+        if (pageNumber != currentPageNumber)
+        {
+            currentPageNumber = pageNumber;
+            cursorItemNumber = newItem;
+            DrawPage();
+            continue;
+        }
+
+        uint8_t x = (240 - pageItemWidth)/2;
+        uint8_t oldCursor = cursorItemNumber;
+        cursorItemNumber = newItem;
+        DrawItem(oldCursor, x);
+        DrawItem(cursorItemNumber, x);
+    }
+}
+
+
 
 } // namespace display
 
