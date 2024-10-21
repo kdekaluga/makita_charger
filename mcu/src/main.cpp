@@ -32,12 +32,13 @@ void CheckForFailures()
     sei();
 
     // Overvoltage check.
-    // Rule: if output voltage exceeds the set value by more than 1 V and output current is
-    // at least 150 mA for 150 ms, the overvoltage failure is signaled.
+    // Rule: if output voltage exceeds the set value by more than 1 V and output current exceeds
+    // the set value by more than 150 mA for 250 ms, the overvoltage failure is signaled.
     static int8_t overvoltageCounter = 0;
-    if (voltage > g_pidTargetVoltage && voltage - g_pidTargetVoltage > 170 && current > 50)
+    if (static_cast<int16_t>(voltage - g_pidTargetVoltage) > 170 &&
+        static_cast<int16_t>(current - g_pidTargetCurrent) > 50)
     {
-        if (++overvoltageCounter >= 15)
+        if (++overvoltageCounter >= 25)
             failureState |= FAILURE_OVERVOLTAGE;
     }
     else
@@ -46,9 +47,9 @@ void CheckForFailures()
     }
 
     // Overcurrent check.
-    // Rule: if output current exceeds 8A for 150 ms, the overcurrent failure is signaled.
+    // Rule: if output current exceeds 9A for 150 ms, the overcurrent failure is signaled.
     static int8_t overcurrentCounter = 0;
-    if (current > 2670)
+    if (current > 3072)
     {
         if (++overcurrentCounter >= 15)
             failureState |= FAILURE_OVERCURRENT;
@@ -116,7 +117,10 @@ void ProcessEncoderButton()
     }
     else
     {
-        if (buttonDownTime >= 2)
+        if (buttonDownTime >= 100)
+            g_encoderKey = EEncoderKey::UpLong;
+
+        else if (buttonDownTime >= 2)
             g_encoderKey = EEncoderKey::Up;
 
         buttonDownTime = 0;
@@ -194,6 +198,25 @@ void Timer100Hz()
     RequestTemperature();
 }
 
+static const char pm_mainMenuTitle[] PROGMEM = "Select mode:";
+static const char pm_mainMenu0[] PROGMEM = "Charger";
+static const char pm_mainMenu1[] PROGMEM = "Power Supply";
+static const char pm_mainMenu2[] PROGMEM = "Settings";
+static const char pm_mainMenu3[] PROGMEM = "Calibration";
+static const char pm_mainMenu4[] PROGMEM = "About";
+
+static const display::Menu pm_mainMenu PROGMEM =
+{
+    nullptr, nullptr, nullptr,
+    5,
+    pm_mainMenuTitle,
+    pm_mainMenu0, pm_mainMenu1, pm_mainMenu2, pm_mainMenu3, pm_mainMenu4
+};
+
+static const char pm_aboutTitle[] PROGMEM = "About";
+static const char pm_about[] PROGMEM = "Smart Makita\ncharger by SD\n"
+    "(kde@kaluga.ru)\n" VERSION_STRING ", built on:\n" __DATE__;
+
 int main()
 {
     // Switch everything to input just in case
@@ -232,10 +255,29 @@ int main()
 
     for (;;)
     {
-        screen::calibration::Show();
-        screen::charger::Show();
-        screen::psupply::Show();
+        uint8_t mode = pm_mainMenu.Show();
+        if (mode == 0)
+        {
+            screen::charger::Show();
+            continue;
+        }
+
+        if (mode == 1)
+        {
+            screen::psupply::Show();
+            continue;
+        }
+
+        if (mode == 3)
+        {
+            screen::calibration::Show();
+            continue;
+        }
+
+        if (mode == 4)
+        {
+            display::MessageBox(pm_aboutTitle, pm_about, MB_OK | MB_INFO);
+            continue;
+        }
     }    
-    
-    //for (;;) {}
 }

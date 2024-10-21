@@ -78,6 +78,11 @@ void SetColors(uint16_t bgColor, uint16_t fgColor)
     g_fgColor = fgColor;
 }
 
+uint8_t PrintGlyph(uint8_t x, uint8_t y, uint8_t code)
+{
+    return x + PrintGlyph(g_font, x, y, code, g_fgColor, g_bgColor);
+}
+
 // Returns width of the specified character using the selected font
 uint8_t GetCharWidth(uint8_t c)
 {
@@ -129,6 +134,8 @@ uint8_t DrawSettableDecimal(uint8_t x, uint8_t y, uint8_t count, uint8_t cursorP
     }
     return x;
 }
+
+// *** Message box ***
 
 uint8_t MessageBox(const char* caption, const char* text, uint8_t flags)
 {
@@ -303,7 +310,7 @@ uint8_t MessageBox(const char* caption, const char* text, uint8_t flags)
                 nSelectedButton = 1;
         }
 
-        if (utils::GetEncoderKey() == EEncoderKey::Down)
+        if (utils::GetEncoderKey() == EEncoderKey::Up)
             return nSelectedButton;
     }
 }
@@ -341,7 +348,7 @@ bool UiScreen::OnLongClick(int8_t cursorPosition) const
 }
 
 // Returns true if a message box was displayed and screen needs to be fully redrawn
-bool CheckFailureState()
+bool UiScreen::CheckFailureState()
 {
     bool result = false;
     for (;;)
@@ -390,12 +397,12 @@ bool CheckFailureState()
     }
 }
 
-void ShowUiScreen(const UiScreen& screen)
+void UiScreen::Show() const
 {
     g_encoderCounter = 0;
 
-    int8_t cursorPosition = screen.DrawBackground();
-    int8_t elementCount = static_cast<int8_t>(pgm_read_byte(&screen.m_elementCount));
+    int8_t cursorPosition = DrawBackground();
+    int8_t elementCount = static_cast<int8_t>(pgm_read_byte(&m_elementCount));
     uint8_t tick100Hz = g_100HzCounter;
     uint16_t ticks = 0;
     bool bEditMode = false;
@@ -408,12 +415,12 @@ void ShowUiScreen(const UiScreen& screen)
 
         if (CheckFailureState())
         {
-            screen.DrawBackground();
+            DrawBackground();
             tick100Hz = g_100HzCounter;
             ticks = 0;
         }
 
-        screen.DrawElements(cursorPosition | (bEditMode && (ticks & 0x20) ? DSD_CURSOR_SKIP : 0), dt);
+        DrawElements(cursorPosition | (bEditMode && (ticks & 0x20) ? DSD_CURSOR_SKIP : 0), dt);
 
         if (ticks > 1000)
         {
@@ -423,22 +430,22 @@ void ShowUiScreen(const UiScreen& screen)
 
         // Process encoder key
         EEncoderKey key = utils::GetEncoderKey();
-        if (key == EEncoderKey::Down)
+        if (key == EEncoderKey::Up)
         {
             // If cursor was hidden, just show it, do nothing more
             if (cursorPosition & DSD_CURSOR_HIDDEN)
                 cursorPosition &= ~DSD_CURSOR_HIDDEN;
             
             // Otherwise call the click function. If it returns true, switch the edit mode on/off
-            else if (screen.OnClickElement(cursorPosition))
+            else if (OnClickElement(cursorPosition))
                 bEditMode = !bEditMode;
 
             tick100Hz = g_100HzCounter;
-            ticks = 0;
+            ticks = 0x20;
         }
         else if (key == EEncoderKey::DownLong)
         {
-            if (screen.OnLongClick(cursorPosition))
+            if (OnLongClick(cursorPosition))
             {
                 // Switch output off and save settings before exiting
                 g_outOn = false;
@@ -448,6 +455,7 @@ void ShowUiScreen(const UiScreen& screen)
                 return;
             }
 
+            bEditMode = false;
             tick100Hz = g_100HzCounter;
             ticks = 0;
         }
@@ -459,7 +467,7 @@ void ShowUiScreen(const UiScreen& screen)
         ticks = 0;
         if (bEditMode)
         {
-            screen.OnChangeElement(cursorPosition, delta);
+            OnChangeElement(cursorPosition, delta);
             continue;
         }
 
@@ -478,6 +486,8 @@ void ShowUiScreen(const UiScreen& screen)
             cursorPosition -= elementCount;
     }    
 }
+
+// *** Draw objects ***
 
 void DrawObjects(const uint8_t* objects, uint16_t bgColor, uint16_t fgColor)
 {
@@ -527,34 +537,65 @@ void DrawObjects(const uint8_t* objects, uint16_t bgColor, uint16_t fgColor)
     }
 }
 
-uint8_t ShowMenu(const Menu& menu)
+// *** Menu ***
+
+uint8_t Menu::GetItemCount() const
+{
+    FuncGetItemCount func = reinterpret_cast<FuncGetItemCount>(pgm_read_word(&m_getItemCount));
+    if (func)
+        return func();
+
+    return pgm_read_byte(&m_itemCount);
+}
+
+uint8_t Menu::DrawItem(uint8_t x, uint8_t y, uint8_t nItem) const
+{
+    FuncDrawItem func = reinterpret_cast<FuncDrawItem>(pgm_read_word(&m_drawItem));
+    if (func)
+        return func(x, y, nItem);
+
+    return PrintString(x, y, reinterpret_cast<const char*>(pgm_read_word(&m_itemNames[nItem])));    
+}
+
+uint8_t Menu::GetItemWidth(uint8_t nItem) const
+{
+    FuncGetItemWidth func = reinterpret_cast<FuncGetItemWidth>(pgm_read_word(&m_getItemWidth));
+    if (func)
+        return func(nItem);
+
+    return GetTextWidth(reinterpret_cast<const char*>(pgm_read_dword(&m_itemNames[nItem])));
+}
+
+uint8_t Menu::Show() const
 {
     SetSans12();
     display::FillRect(0, 0, 240, 30, CLR_RED_BEAUTIFUL);
     display::SetColors(CLR_RED_BEAUTIFUL, CLR_WHITE);
-    display::PrintString(8, 23, reinterpret_cast<const char*>(pgm_read_word(&menu.m_title)));
+    display::PrintString(8, 23, reinterpret_cast<const char*>(pgm_read_word(&m_title)));
 
     constexpr uint8_t yFirst = 59;
 
     uint8_t currentPageNumber = 0;
     uint8_t pageItemWidth = 0;
     uint8_t cursorItemNumber = 0;
-    uint8_t itemCount = pgm_read_byte(&menu.m_itemsCount);
+    uint8_t itemCount = GetItemCount();
     uint8_t pageCount = (itemCount + 6)/7;
 
-    const auto DrawItem = [&](int nItem, int x)
+    const auto DrawItem = [&](uint8_t nItem, int x)
     {
         SetBgColor(nItem == cursorItemNumber ? CLR_BG_CURSOR : CLR_BLACK);
 
+        uint8_t y = yFirst + (nItem - currentPageNumber*7)*27;
+        /*
         utils::I8ToString(nItem + 1, g_buffer);
         g_buffer[3] = '.';
         g_buffer[4] = ' ';
         if (g_buffer[1] == '0')
             g_buffer[1] = 127;
 
-        uint8_t y = yFirst + (nItem - currentPageNumber*7)*27;
         x = PrintStringRam(x, y, g_buffer + 1, 4);
-        x = PrintString(x, y, reinterpret_cast<const char*>(pgm_read_word(&menu.m_itemNames[nItem])));
+        */
+        x = this->DrawItem(x, y, nItem);
         FillRect(x, y - 21, 120 + pageItemWidth/2 - x, 27, g_bgColor);
     };
 
@@ -567,12 +608,12 @@ uint8_t ShowMenu(const Menu& menu)
             if (nItem >= itemCount)
                 break;
 
-            uint8_t width = GetTextWidth(reinterpret_cast<const char*>(pgm_read_dword(&menu.m_itemNames[nItem])));
+            uint8_t width = GetItemWidth(nItem);
             if (width > itemWidth)
                 itemWidth = width;
         }
 
-        return itemWidth + 2*13 + 6 + 6;
+        return itemWidth; // + 2*13 + 6 + 6;
     };
 
     const auto DrawPage = [&]()
@@ -601,7 +642,7 @@ uint8_t ShowMenu(const Menu& menu)
     for (;;)
     {
         EEncoderKey key = utils::GetEncoderKey();
-        if (key == EEncoderKey::Down)
+        if (key == EEncoderKey::Up)
             return cursorItemNumber;
 
         int8_t delta = utils::GetEncoderDelta();

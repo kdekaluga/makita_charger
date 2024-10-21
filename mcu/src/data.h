@@ -69,6 +69,7 @@ enum class EEncoderKey : uint8_t
     Down,
     Up,
     DownLong,
+    UpLong,
 };
 
 var EEncoderKey g_encoderKey;
@@ -106,6 +107,12 @@ var uint16_t g_temperatureBoard;
 
 // ***
 
+struct SPsProfile
+{
+    uint16_t m_voltage;
+    uint16_t m_current;
+};
+
 struct SSettings
 {
     // Key (encoder rotation and click) beep length and volume
@@ -121,9 +128,11 @@ struct SSettings
     int8_t m_currentOffset;
     uint16_t m_current4096Value;
 
-    // Voltage and current settings x1000 for the power supply mode
-    uint16_t m_psVoltageX1000;
-    uint16_t m_psCurrentX1000;
+    // Voltage and current settings for the power supply mode
+    SPsProfile m_psSettings;
+
+    // Additional power supply profiles (10 pcs)
+    SPsProfile m_psProfiles[10];
 
     // Magic number
     static constexpr uint16_t MagicNumber = 0x9881; // CRC16 of "SSettings_v1"

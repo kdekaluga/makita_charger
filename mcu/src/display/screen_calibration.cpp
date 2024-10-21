@@ -168,13 +168,14 @@ bool OnLongClick(int8_t cursorPosition)
     static const char pm_menu2[] PROGMEM = "Save and exit";
     static const display::Menu pm_menu PROGMEM =
     {
+        nullptr, nullptr, nullptr,
         3,
         pm_menuTitle,
         pm_menu0,
         pm_menu1,
         pm_menu2,
     };
-    uint8_t item = display::ShowMenu(pm_menu);
+    uint8_t item = pm_menu.Show();
     if (item == 2)
         return true;
 
@@ -200,7 +201,7 @@ void Show()
     UpdateTargetValues();
     g_outOn = true;
 
-    display::ShowUiScreen(pm_calibrationScreen);
+    pm_calibrationScreen.Show();
 }
 
 

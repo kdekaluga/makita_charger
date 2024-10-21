@@ -80,8 +80,20 @@ void SSettings::ResetToDefault()
         .m_voltage4096Value = 24532,
         .m_currentOffset = 0,
         .m_current4096Value = 12580,
-        .m_psVoltageX1000 = 12000,
-        .m_psCurrentX1000 = 1000,
+        .m_psSettings = {12000, 1000},
+        .m_psProfiles =
+        {
+            { 5000, 6000},
+            {12000, 6000},
+            {21000, 6000},
+            { 4200, 1500},
+            { 8400, 1500},
+            {12600, 1500},
+            {16800, 1500},
+            {21000, 1500},
+            { 4200,  300},
+            { 8400,  300},
+        },
         .m_magicNumber = MagicNumber,
     };
 

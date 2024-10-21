@@ -13,6 +13,79 @@ namespace screen::psupply {
 #define UI_CURRENT3 8
 #define UI_ELEMENT_COUNT 9
 
+// Power supply menu:
+//   Return
+//   Exit
+//   P0: XX.XXV Y.YYA
+//   P1: XX.XXV Y.YYA
+//   ...
+//   P9: XX.XXV Y.YYA
+//   Return
+//   Set0: XX.XXV Y.YYA
+//   Set1: XX.XXV Y.YYA
+//   ...
+//   Set9: XX.XXV Y.YYA
+
+static const char pm_psmTitle[] PROGMEM = "Power supply";
+static const char pm_psmReturn[] PROGMEM = "--- Return ---";
+static const char pm_psmExit[] PROGMEM = "Exit Power Supply";
+
+uint8_t PsmDrawItem(uint8_t x, uint8_t y, uint8_t nItem)
+{
+    if (nItem == 0 || nItem == 12)
+        return display::PrintString(x, y, pm_psmReturn);
+
+    if (nItem == 1)
+        return display::PrintString(x, y, pm_psmExit);
+
+    uint8_t nProfile;
+    if (nItem < 12)
+    {
+        x = display::PrintGlyph(x, y, 'P');
+        nProfile = nItem - 2;
+    }
+    else
+    {
+        static const char pm_symbols[] PROGMEM = "Set";
+        x = display::PrintString(x, y, pm_symbols);
+        nProfile = nItem - 13;
+    }
+
+    x = display::PrintGlyph(x, y, nProfile + '0');
+    static const char pm_symbols[] PROGMEM = ": ";
+    x = display::PrintString(x, y, pm_symbols);
+    utils::VoltageToString(g_settings.m_psProfiles[nProfile].m_voltage, true);
+    x = display::PrintStringRam(x, y, g_buffer, 6);
+    x = display::PrintGlyph(x, y, ' ');
+    utils::CurrentToString(g_settings.m_psProfiles[nProfile].m_current);
+    return display::PrintStringRam(x, y, g_buffer, 5);
+}
+
+uint8_t PsmGetItemWidth(uint8_t nItem)
+{
+    if (nItem == 0 || nItem == 12)
+        return display::GetTextWidth(pm_psmReturn);
+
+    if (nItem == 1)
+        return display::GetTextWidth(pm_psmExit);
+
+    if (nItem < 12)
+        return 16 + 13 + 6 + 6 + 13*4 + 6 + 15 + 6 + 13*3 + 6 + 16;
+
+    return (16 + 13 + 7 + 13 + 6) + 6 + (13*4 + 6 + 15) + 6 + (13*3 + 6 + 16);
+}
+
+static const display::Menu pm_powerSupplyMenu PROGMEM =
+{
+    nullptr,
+    &PsmDrawItem,
+    &PsmGetItemWidth,
+    23,
+    pm_psmTitle
+};
+
+// ***
+
 int8_t DrawBackground()
 {
     static const uint8_t pm_bgObject[] PROGMEM =
@@ -170,18 +243,18 @@ void DrawMeasurements(int8_t cursorPosition)
 void DrawSettables(int8_t cursorPosition)
 {
     uint8_t nSelected = cursorPosition - UI_VOLTAGE1;
-    utils::VoltageToString(g_settings.m_psVoltageX1000, nSelected != 0);
+    utils::VoltageToString(g_settings.m_psSettings.m_voltage, nSelected != 0);
     display::DrawSettableDecimal(71, 214 + 19, 5, nSelected, CLR_WHITE, CLR_BLUE);
 
-    utils::CurrentToString(g_settings.m_psCurrentX1000);
+    utils::CurrentToString(g_settings.m_psSettings.m_current);
     nSelected = cursorPosition - UI_CURRENT1;
     display::DrawSettableDecimal(156, 214 + 19, 4, nSelected, CLR_WHITE, CLR_BLUE);
 }
 
 void UpdateTargetValues()
 {
-    g_pidTargetVoltage = g_settings.DisplayX1000VoltageToAdc(g_settings.m_psVoltageX1000);
-    g_pidTargetCurrent = g_settings.DisplayX1000CurrentToAdc(g_settings.m_psCurrentX1000);
+    g_pidTargetVoltage = g_settings.DisplayX1000VoltageToAdc(g_settings.m_psSettings.m_voltage);
+    g_pidTargetCurrent = g_settings.DisplayX1000CurrentToAdc(g_settings.m_psSettings.m_current);
 }
 
 void DrawElements(int8_t cursorPosition, uint8_t ticksElapsed)
@@ -219,13 +292,23 @@ void OnChangeValue(int8_t cursorPosition, int8_t delta)
 {
     if (cursorPosition >= UI_VOLTAGE1 && cursorPosition <= UI_VOLTAGE4)
     {
-        g_settings.m_psVoltageX1000 =
-            utils::ChangeI16ByDigit(g_settings.m_psVoltageX1000, UI_VOLTAGE4 + 1 - cursorPosition, delta, 0, MAX_VOLTAGE);
+        g_settings.m_psSettings.m_voltage = utils::ChangeI16ByDigit(
+            g_settings.m_psSettings.m_voltage,
+            UI_VOLTAGE4 + 1 - cursorPosition,
+            delta,
+            0,
+            MAX_VOLTAGE
+        );
     }
     else if (cursorPosition >= UI_CURRENT1 && cursorPosition <= UI_CURRENT3)
     {
-        g_settings.m_psCurrentX1000 =
-            utils::ChangeI16ByDigit(g_settings.m_psCurrentX1000, UI_CURRENT3 + 1 - cursorPosition, delta, 0, MAX_CURRENT);
+        g_settings.m_psSettings.m_current = utils::ChangeI16ByDigit(
+            g_settings.m_psSettings.m_current,
+            UI_CURRENT3 + 1 - cursorPosition,
+            delta,
+            0,
+            MAX_CURRENT
+        );
     }
 
     UpdateTargetValues();
@@ -233,7 +316,26 @@ void OnChangeValue(int8_t cursorPosition, int8_t delta)
 
 bool OnLongClick(int8_t cursorPosition)
 {
-    return true;
+    uint8_t res = pm_powerSupplyMenu.Show();
+    if (res == 1)
+        return true;
+
+    if (res != 0 && res != 12)
+    {
+        if (res < 12)
+        {
+            g_settings.m_psSettings = g_settings.m_psProfiles[res - 2];
+            UpdateTargetValues();
+        }
+        else
+        {
+            g_settings.m_psProfiles[res - 13] = g_settings.m_psSettings;
+            g_settings.SaveToEeprom();
+        }
+    }
+
+    DrawBackground();
+    return false;
 }
 
 static const display::UiScreen pm_powerSupplyScreen PROGMEM =
@@ -250,7 +352,7 @@ void Show()
 {
     UpdateTargetValues();
 
-    display::ShowUiScreen(pm_powerSupplyScreen);
+    pm_powerSupplyScreen.Show();
 }
 
 } // namespace screen::psupply

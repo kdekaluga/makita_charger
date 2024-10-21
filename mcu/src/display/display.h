@@ -90,6 +90,7 @@ struct Rect
 void Init();
 
 // Fonts and color functions
+uint8_t GetTextWidth(const char* text);
 uint8_t GetTextWidthRam(const char* text, uint8_t length);
 void SetSans12();
 void SetSans18();
@@ -98,6 +99,7 @@ const Font* GetSans18();
 void SetBgColor(uint16_t bgColor);
 void SetColor(uint16_t color);
 void SetColors(uint16_t bgColor, uint16_t fgColor);
+uint8_t PrintGlyph(uint8_t x, uint8_t y, uint8_t code);
 
 // Draws count characters of a decimal string from g_buffer, each digit of which
 // can be independently highlighted.
@@ -133,15 +135,16 @@ uint8_t MessageBox(const char* caption, const char* text, uint8_t flags);
 
 // *** UI screen ***
 
-// Returns initial cursor position
-using UiDrawBackgroundFunc = int8_t(*)();
-using UiDrawElementsFunc = void(*)(int8_t cursorPosition, uint8_t ticksElapsed);
-using UiOnClickElementFunc = bool(*)(int8_t cursorPosition);
-using UiOnChangeElementFunc = void(*)(int8_t cursorPosition, int8_t delta);
-using UiOnLongClickFunc = bool(*)(int8_t cursorPosition);
-
-struct UiScreen
+class UiScreen
 {
+public:
+    // Returns initial cursor position
+    using UiDrawBackgroundFunc = int8_t(*)();
+    using UiDrawElementsFunc = void(*)(int8_t cursorPosition, uint8_t ticksElapsed);
+    using UiOnClickElementFunc = bool(*)(int8_t cursorPosition);
+    using UiOnChangeElementFunc = void(*)(int8_t cursorPosition, int8_t delta);
+    using UiOnLongClickFunc = bool(*)(int8_t cursorPosition);
+
     int8_t m_elementCount;
     UiDrawBackgroundFunc m_drawBackgroundFunc;
     UiDrawElementsFunc m_drawElementsFunc;
@@ -149,14 +152,17 @@ struct UiScreen
     UiOnChangeElementFunc m_onChangeElementFunc;
     UiOnLongClickFunc m_onLongClickFunc;
 
+    void Show() const;
+
+private:
     int8_t DrawBackground() const;
     void DrawElements(int8_t cursorPosition, uint8_t ticksElapsed) const;
     bool OnClickElement(int8_t cursorPosition) const;
     void OnChangeElement(int8_t cursorPosition, int8_t delta) const;
     bool OnLongClick(int8_t cursorPosition) const;
-};
 
-void ShowUiScreen(const UiScreen& screen);
+    static bool CheckFailureState();
+};
 
 // *** Draw objects ***
 
@@ -197,16 +203,33 @@ void ShowUiScreen(const UiScreen& screen);
 
 void DrawObjects(const uint8_t* objects, uint16_t bgColor, uint16_t fgColor);
 
-struct Menu
+// *** Menu ***
+
+class Menu
 {
-    uint8_t m_itemsCount;
+public:
+    using FuncGetItemCount = uint8_t(*)();
+    using FuncDrawItem = uint8_t(*)(uint8_t x, uint8_t y, uint8_t nItem);
+    using FuncGetItemWidth = uint8_t(*)(uint8_t nItem);
+
+    FuncGetItemCount m_getItemCount;
+    FuncDrawItem m_drawItem;
+    FuncGetItemWidth m_getItemWidth;
+
+    uint8_t m_itemCount;
     const char* m_title;
     const char* m_itemNames[];
+
+    uint8_t Show() const;
+
+private:
+    uint8_t GetItemCount() const;
+    uint8_t DrawItem(uint8_t x, uint8_t y, uint8_t nItem) const;
+    uint8_t GetItemWidth(uint8_t nItem) const;
 };
 
-uint8_t ShowMenu(const Menu& menu);
+// *** Assembler routines ***
 
-// Functions written in assembler
 extern "C" {
 
 // Sends a command or data to ST7789

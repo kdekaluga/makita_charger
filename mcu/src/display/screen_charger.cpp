@@ -549,7 +549,7 @@ void Show()
 {
     Init();
 
-    display::ShowUiScreen(pm_chargerScreen);
+    pm_chargerScreen.Show();
 }
 
 
