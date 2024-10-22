@@ -103,12 +103,12 @@ void ProcessEncoderButton()
         if (++buttonDownTime == 2)
         {
             g_encoderKey = EEncoderKey::Down;
-            g_keyBeepLengthLeft = g_settings.m_keyBeepLength;
+            sound::Beep();
         }
         else if (buttonDownTime == 100)
         {
             g_encoderKey = EEncoderKey::DownLong;
-            g_keyBeepLengthLeft = g_settings.m_keyBeepLength;
+            sound::Beep();
         }
         else if (buttonDownTime == 600)
         {
@@ -125,18 +125,6 @@ void ProcessEncoderButton()
 
         buttonDownTime = 0;
     }
-}
-
-void ProcessKeyBeep()
-{
-    if (!g_keyBeepLengthLeft)
-        return;
-
-    ICR1H = HIBYTE(1000);
-    ICR1L = LOBYTE(1000);
-
-    OCR1AH = 0;
-    OCR1AL = (--g_keyBeepLengthLeft ? g_settings.m_keyBeepVolume : 0);
 }
 
 void RequestTemperature()
@@ -194,7 +182,7 @@ void Timer100Hz()
 
     CheckForFailures();
     ProcessEncoderButton();
-    ProcessKeyBeep();
+    sound::OnTimer();
     RequestTemperature();
 }
 
@@ -203,14 +191,15 @@ static const char pm_mainMenu0[] PROGMEM = "Charger";
 static const char pm_mainMenu1[] PROGMEM = "Power Supply";
 static const char pm_mainMenu2[] PROGMEM = "Settings";
 static const char pm_mainMenu3[] PROGMEM = "Calibration";
-static const char pm_mainMenu4[] PROGMEM = "About";
+static const char pm_mainMenu4[] PROGMEM = "Music player";
+static const char pm_mainMenu5[] PROGMEM = "About";
 
 static const display::Menu pm_mainMenu PROGMEM =
 {
     nullptr, nullptr, nullptr,
-    5,
+    6,
     pm_mainMenuTitle,
-    pm_mainMenu0, pm_mainMenu1, pm_mainMenu2, pm_mainMenu3, pm_mainMenu4
+    pm_mainMenu0, pm_mainMenu1, pm_mainMenu2, pm_mainMenu3, pm_mainMenu4, pm_mainMenu5
 };
 
 static const char pm_aboutTitle[] PROGMEM = "About";
@@ -249,35 +238,36 @@ int main()
         g_settings.ResetToDefault();
         g_settings.SaveToEeprom();
         display::Clear(CLR_BLACK);
-        display::SetSans12();
         display::MessageBox(display::pm_warning, pm_invalidSettings, MB_WARNING | MB_OK);
     }
 
+    // Initially start in the charger mode
+    uint8_t mode = 0;
     for (;;)
     {
-        uint8_t mode = pm_mainMenu.Show();
-        if (mode == 0)
+        switch (mode)
         {
+        case 0:
             screen::charger::Show();
-            continue;
-        }
+            break;
 
-        if (mode == 1)
-        {
+        case 1:
             screen::psupply::Show();
-            continue;
-        }
+            break;
 
-        if (mode == 3)
-        {
+        case 3:
             screen::calibration::Show();
-            continue;
+            break;
+
+        case 4:
+            screen::music::Show();
+            break;
+
+        case 5:
+            display::MessageBox(pm_aboutTitle, pm_about, MB_OK | MB_INFO);
+            break;
         }
 
-        if (mode == 4)
-        {
-            display::MessageBox(pm_aboutTitle, pm_about, MB_OK | MB_INFO);
-            continue;
-        }
+        mode = pm_mainMenu.Show(mode);
     }    
 }

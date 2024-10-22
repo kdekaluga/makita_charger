@@ -527,7 +527,6 @@ bool OnLongClick(int8_t cursorPosition)
     if (g_state != EState::MEASURING_VOLTAGE && g_state != EState::CHARGING)
         return true;
 
-    display::SetSans12();
     if (display::MessageBox(pm_exit, pm_exitConfitmation, MB_YESNO | MB_INFO | MB_DEFAULT_NO) == 0)
         return true;
 

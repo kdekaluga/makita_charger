@@ -96,9 +96,6 @@ var volatile uint8_t g_failureState;
 #define FAILURE_OVERCURRENT 0x80
 #define FAILURE_ANY (FAILURE_POWER_LOW | FAILURE_OVERVOLTAGE | FAILURE_OVERCURRENT)
 
-// How many 100 Hz ticks of key beep remains
-var uint8_t g_keyBeepLengthLeft;
-
 // State of the temperature sensor request routine
 var uint8_t g_tempRequesterState;
 

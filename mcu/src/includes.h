@@ -22,16 +22,17 @@
 
 #include "common.h"
 #include "data.h"
+#include "charger_profile.h"
 #include "utils.h"
+#include "twi/twi.h"
 #include "display/display.h"
 #include "display/screen_power_supply.h"
 #include "display/screen_charger.h"
 #include "display/screen_calibration.h"
-#include "twi/twi.h"
-#include "charger_profile.h"
+#include "display/screen_music_player.h"
+#include "sound/music.h"
 
 void CheckForFailures();
 void ProcessEncoderButton();
-void ProcessKeyBeep();
 void RequestTemperature();
 extern "C" void Timer100Hz();

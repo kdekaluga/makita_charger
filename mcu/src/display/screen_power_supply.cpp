@@ -27,7 +27,7 @@ namespace screen::psupply {
 //   Set9: XX.XXV Y.YYA
 
 static const char pm_psmTitle[] PROGMEM = "Power supply";
-static const char pm_psmReturn[] PROGMEM = "--- Return ---";
+static const char pm_psmReturn[] PROGMEM = "------ Return ------";
 static const char pm_psmExit[] PROGMEM = "Exit Power Supply";
 
 uint8_t PsmDrawItem(uint8_t x, uint8_t y, uint8_t nItem)
@@ -277,7 +277,6 @@ bool OnClick(int8_t cursorPosition)
         static const char pm_timeResetTitle[] PROGMEM = "Time reset";
         static const char pm_timeResetText[] PROGMEM = "Are you sure\nwant to reset\ntime and capacity\nvalues?";
 
-        display::SetSans12();
         if (display::MessageBox(pm_timeResetTitle, pm_timeResetText, MB_YESNO | MB_DEFAULT_NO) == 0)
             utils::TimeCapacityReset();
 

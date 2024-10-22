@@ -42,12 +42,12 @@ void Init()
     SendCommand(DISPLAY_CMD_DISPON);
 }
 
-void SetSans12()
+void __attribute__((noinline)) SetSans12()
 {
     g_font = &FreeSans12::g_font;
 }
 
-void SetSans18()
+void __attribute__((noinline)) SetSans18()
 {
     g_font = &FreeSans18::g_font;
 }
@@ -148,6 +148,9 @@ uint8_t MessageBox(const char* caption, const char* text, uint8_t flags)
     // |                  |
     // |     YES   NO     |
     // +------------------+
+
+    // No need to use any other font...
+    SetSans12();
 
     constexpr uint8_t lineThick = 2;
     constexpr uint8_t captionYMargin = 3;
@@ -358,7 +361,6 @@ bool UiScreen::CheckFailureState()
 
         if (g_failureState & FAILURE_POWER_LOW)
         {
-            display::SetSans12();
             display::MessageBox(display::pm_warning, pm_lowPower, MB_WARNING);
 
             while (g_failureState & FAILURE_POWER_LOW)
@@ -371,7 +373,6 @@ bool UiScreen::CheckFailureState()
 
         if (g_failureState & FAILURE_OVERVOLTAGE)
         {
-            display::SetSans12();
             display::MessageBox(display::pm_failure, pm_overvoltage, MB_ERROR | MB_OK);
 
             cli();
@@ -383,7 +384,6 @@ bool UiScreen::CheckFailureState()
 
         if (g_failureState & FAILURE_OVERCURRENT)
         {
-            display::SetSans12();
             display::MessageBox(display::pm_failure, pm_overcurrent, MB_ERROR | MB_OK);
 
             cli();
@@ -449,6 +449,7 @@ void UiScreen::Show() const
             {
                 // Switch output off and save settings before exiting
                 g_outOn = false;
+                g_pidTargetVoltage = g_pidTargetCurrent = 0;
                 g_settings.SaveToEeprom();
 
                 utils::Delay(2);
@@ -568,6 +569,11 @@ uint8_t Menu::GetItemWidth(uint8_t nItem) const
 
 uint8_t Menu::Show() const
 {
+    return Show(0);
+}
+
+uint8_t Menu::Show(uint8_t selectedItem) const
+{
     SetSans12();
     display::FillRect(0, 0, 240, 30, CLR_RED_BEAUTIFUL);
     display::SetColors(CLR_RED_BEAUTIFUL, CLR_WHITE);
@@ -575,15 +581,14 @@ uint8_t Menu::Show() const
 
     constexpr uint8_t yFirst = 59;
 
-    uint8_t currentPageNumber = 0;
+    uint8_t currentPageNumber = selectedItem/7;
     uint8_t pageItemWidth = 0;
-    uint8_t cursorItemNumber = 0;
     uint8_t itemCount = GetItemCount();
     uint8_t pageCount = (itemCount + 6)/7;
 
     const auto DrawItem = [&](uint8_t nItem, int x)
     {
-        SetBgColor(nItem == cursorItemNumber ? CLR_BG_CURSOR : CLR_BLACK);
+        SetBgColor(nItem == selectedItem ? CLR_BG_CURSOR : CLR_BLACK);
 
         uint8_t y = yFirst + (nItem - currentPageNumber*7)*27;
         /*
@@ -643,7 +648,7 @@ uint8_t Menu::Show() const
     {
         EEncoderKey key = utils::GetEncoderKey();
         if (key == EEncoderKey::Up)
-            return cursorItemNumber;
+            return selectedItem;
 
         int8_t delta = utils::GetEncoderDelta();
         if (!delta)
@@ -652,27 +657,25 @@ uint8_t Menu::Show() const
             continue;
         }
 
-        uint8_t newItem = cursorItemNumber + delta;
-        if (newItem >= 128)
-            newItem = 0;
+        uint8_t oldSelectedItem = selectedItem;
+        selectedItem += delta;
+        if (selectedItem >= 128)
+            selectedItem = 0;
 
-        if (newItem >= itemCount)
-            newItem = itemCount - 1;
+        if (selectedItem >= itemCount)
+            selectedItem = itemCount - 1;
         
-        uint8_t pageNumber = newItem/7;
+        uint8_t pageNumber = selectedItem/7;
         if (pageNumber != currentPageNumber)
         {
             currentPageNumber = pageNumber;
-            cursorItemNumber = newItem;
             DrawPage();
             continue;
         }
 
         uint8_t x = (240 - pageItemWidth)/2;
-        uint8_t oldCursor = cursorItemNumber;
-        cursorItemNumber = newItem;
-        DrawItem(oldCursor, x);
-        DrawItem(cursorItemNumber, x);
+        DrawItem(oldSelectedItem, x);
+        DrawItem(selectedItem, x);
     }
 }
 

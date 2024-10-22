@@ -73,15 +73,21 @@ void DrawElements(int8_t cursorPosition, uint8_t ticksElapsed)
 
     display::SetSans12();
 
-    // Set voltage
+    uint8_t pidMode = g_pidMode;
+
+    // Set voltage and CV
     uint8_t nSelected = cursorPosition - UI_VOLTAGE1;
     utils::VoltageToString(g_voltageX1000, nSelected != 0);
     display::DrawSettableDecimal(240 - 10 - 15 - 13*4 - 6, 52, 5, nSelected, CLR_WHITE, CLR_DARK_BLUE);
+    display::PrintGlyph(display::GetSans12(), 240 - 10 - 15 - 13*4 - 6 - 13, 52,
+        pidMode == PID_MODE_CV ? '*' : 127, CLR_WHITE, CLR_DARK_BLUE);
 
     // Set current
     nSelected = cursorPosition - UI_CURRENT1;
     utils::CurrentToString(g_currentX1000);
     display::DrawSettableDecimal(240 - 10 - 16 - 13*3 - 6, 136, 4, nSelected, CLR_WHITE, CLR_DARK_BLUE);
+    display::PrintGlyph(display::GetSans12(), 240 - 10 - 16 - 13*3 - 6 - 13, 136,
+        pidMode == PID_MODE_CC ? '*' : 127, CLR_WHITE, CLR_DARK_BLUE);
 
     // Voltage multiplier
     display::SetColors(CLR_BLACK, CLR_GRAY);

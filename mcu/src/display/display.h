@@ -221,6 +221,7 @@ public:
     const char* m_itemNames[];
 
     uint8_t Show() const;
+    uint8_t Show(uint8_t selectedItem) const;
 
 private:
     uint8_t GetItemCount() const;
