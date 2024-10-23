@@ -2,6 +2,7 @@
 
 namespace sound {
 
+// Music notes frequency divisors
 static const uint16_t pm_noteDivisors[] PROGMEM =
 {
     // E4 - B4
@@ -12,7 +13,7 @@ static const uint16_t pm_noteDivisors[] PROGMEM =
     956, 902, 851, 804, 758, 716, 676, 638, 602, 568, 536, 506,
 };
 
-// Notes decay table
+// Note decay table
 static const uint8_t pm_noteDecayVolume[] PROGMEM =
 {
     0, 128, 128, 128, 127, 126, 124, 122, 119,
@@ -34,16 +35,29 @@ static const uint8_t pm_volumeTable[] PROGMEM =
     0, 1, 2, 3, 4, 5, 6, 8, 11, 15, 20, 26, 33, 41, 60, 100
 };
 
+void SetSoundParameters(uint16_t freqDivisor, uint8_t volume)
+{
+    OCR1AH = 0;
+    OCR1AL = volume;
+    if (!volume)
+        return;
+
+    uint16_t divisor = static_cast<uint16_t>(ICR1L) | (static_cast<uint16_t>(ICR1H) << 8);
+    if (divisor != freqDivisor)
+    {
+        ICR1H = HIBYTE(freqDivisor);
+        ICR1L = LOBYTE(freqDivisor);
+        TCNT1H = 0;
+        TCNT1L = 0;
+    }
+}
+
 void ProcessKeyBeep()
 {
     if (!g_keyBeepLengthLeft || !g_settings.m_keyBeepVolume)
         return;
 
-    ICR1H = HIBYTE(1000);
-    ICR1L = LOBYTE(1000);
-
-    OCR1AH = 0;
-    OCR1AL = (--g_keyBeepLengthLeft ? pgm_read_byte(&pm_volumeTable[g_settings.m_keyBeepVolume]) : 0);
+    SetSoundParameters(1000, --g_keyBeepLengthLeft ? pgm_read_byte(&pm_volumeTable[g_settings.m_keyBeepVolume]) : 0);
 }
 
 void MusicPlayer()
@@ -96,25 +110,19 @@ void PlayNote()
         return;
 
     uint16_t noteDivisor = g_currentNoteDivisor;
-    if (!noteDivisor || !volume)
+    if (!noteDivisor || !volume || !g_settings.m_musicVolume)
     {
         OCR1AH = 0;
         OCR1AL = 0;
         return;
     }
 
-    constexpr uint8_t musicVolume = 15;
-    volume = HIBYTE(static_cast<uint16_t>(musicVolume << 1)*volume);
+    volume = HIBYTE(static_cast<uint16_t>(g_settings.m_musicVolume << 1)*volume);
     if (!volume)
         volume = 1;
 
     volume = pgm_read_byte(&pm_volumeTable[volume]);
-
-    ICR1H = HIBYTE(noteDivisor);
-    ICR1L = LOBYTE(noteDivisor);
-
-    OCR1AH = 0;
-    OCR1AL = volume;
+    SetSoundParameters(noteDivisor, volume);
 }
 
 void OnTimer()
@@ -126,11 +134,10 @@ void OnTimer()
 
 void PlayMusic(uint8_t nMelody)
 {
-    uint8_t melodyCount = pgm_read_byte(&pm_melodies.m_count);
-    if (nMelody >= melodyCount)
+    if (nMelody >= MELODIES_COUNT)
         return;
 
-    const uint8_t* music = reinterpret_cast<const uint8_t*>(pgm_read_word(&pm_melodies.m_melodies[nMelody].m_data));
+    const uint8_t* music = reinterpret_cast<const uint8_t*>(pgm_read_word(&pm_melodies[nMelody].m_data));
     uint8_t speed = pgm_read_byte(music++);
     cli();
     g_currentMusicPos = music;

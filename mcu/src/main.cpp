@@ -224,7 +224,7 @@ int main()
     screen::charger::g_profile.m_openCurrentX1000 = 30;
     screen::charger::g_profile.m_minBatteryVoltageX1000 = 3000;
     screen::charger::g_profile.m_restartChargeVoltageX1000 = 4100;
-    screen::charger::g_profile.m_use3rdPin = false;
+    screen::charger::g_profile.m_options = 0;
     screen::charger::g_profile.m_stopChargeCurrentPercent = 10;
 
     utils::InitMcu();
@@ -253,6 +253,10 @@ int main()
 
         case 1:
             screen::psupply::Show();
+            break;
+
+        case 2:
+            screen::settings::Show();
             break;
 
         case 3:

@@ -99,6 +99,7 @@ const Font* GetSans18();
 void SetBgColor(uint16_t bgColor);
 void SetColor(uint16_t color);
 void SetColors(uint16_t bgColor, uint16_t fgColor);
+void SetUiElementColors(int8_t cursorPosition, int8_t nElement);
 uint8_t PrintGlyph(uint8_t x, uint8_t y, uint8_t code);
 
 // Draws count characters of a decimal string from g_buffer, each digit of which

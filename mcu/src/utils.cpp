@@ -218,14 +218,19 @@ uint16_t GetBoardTempColor(uint16_t temperature)
 
 void PercentToString(uint8_t percent)
 {
-    I8ToString(percent, g_buffer);
+    I8ToStringSpaces(percent);
+    g_buffer[3] = '%';
+}
+
+void I8ToStringSpaces(uint8_t value)
+{
+    I8ToString(value, g_buffer);
     if (g_buffer[0] == '0')
     {
         g_buffer[0] = 127;
         if (g_buffer[1] == '0')
             g_buffer[1] = 127;
     }
-    g_buffer[3] = '%';
 }
 
 void I8SToString(int8_t value)
@@ -267,6 +272,24 @@ uint16_t ChangeI16ByDigit(uint16_t value, uint8_t digit, int8_t delta, uint16_t 
         return minValue;
 
     value -= change;
+    return value < minValue ? minValue : value;
+}
+
+uint8_t ChangeI8ByDelta(uint8_t value, int8_t delta, int8_t minValue, int8_t maxValue)
+{
+    if (delta > 0)
+    {
+        if (0xFF - value < static_cast<uint8_t>(delta))
+            return maxValue;
+
+        value += delta;
+        return value > maxValue ? maxValue : value;
+    }
+
+    if (static_cast<uint8_t>(-delta) > value)
+        return minValue;
+
+    value += delta;
     return value < minValue ? minValue : value;
 }
 

@@ -125,6 +125,15 @@ struct SSettings
     int8_t m_currentOffset;
     uint16_t m_current4096Value;
 
+    // Music player volume
+    uint8_t m_musicVolume;
+
+    // Charge musics
+    uint8_t m_chargeStartMusic;
+    uint8_t m_chargeEndMusic;
+    uint8_t m_chargeInterruptedMusic;
+    uint8_t m_badBatteryMusic;
+
     // Voltage and current settings for the power supply mode
     SPsProfile m_psSettings;
 

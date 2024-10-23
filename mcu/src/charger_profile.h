@@ -40,6 +40,12 @@ inline EState operator |(EState op1, EState op2)
     return static_cast<EState>(static_cast<uint8_t>(op1) | static_cast<uint8_t>(op2));
 }
 
+// Whether to use Makita 3rd pin to detect battery issues
+#define COPT_USE_3RD_PIN 0x01
+
+// Whether to use continuos constant current mode
+#define COPT_CCC_MODE 0x02
+
 struct SProfile
 {
     // Profile name, up to 20 characters
@@ -71,11 +77,8 @@ struct SProfile
     // is considered complete (for the CC/CV mode).
     uint8_t m_stopChargeCurrentPercent;
 
-    // Whether to use Makita 3rd pin to detect battery issues
-    bool m_use3rdPin;
-
-    // Whether to use continuos constant current mode
-    bool m_cccMode;
+    // Charge options flags (defined above)
+    uint8_t m_options;
 };
 
 } // namespace charger

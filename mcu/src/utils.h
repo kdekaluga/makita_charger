@@ -41,10 +41,14 @@ uint16_t GetBoardTempColor(uint16_t temperature);
 // Converts percent value to the XXX% string (4 chars)
 void PercentToString(uint8_t percent);
 
+// Converts unsigned 8-bit integer to string with leading spaces
+void I8ToStringSpaces(uint8_t value);
+
 // Converts signed 8-bit value to string
 void I8SToString(int8_t value);
 
 uint16_t ChangeI16ByDigit(uint16_t value, uint8_t digit, int8_t delta, uint16_t minValue, uint16_t maxValue);
+uint8_t ChangeI8ByDelta(uint8_t value, int8_t delta, int8_t minValue, int8_t maxValue);
 
 void ClearPendingKeys();
 
@@ -59,7 +63,7 @@ uint32_t ShiftLeft12(uint16_t value);
 // Converts 16-bit integer to its decimal representation. Can substitute leading zeros with spaces
 void I16ToString(uint16_t value, char *buffer, uint8_t maxLeadingSpaces);
 
-// Converts 8-bit integer to string
+// Converts unsigned 8-bit integer to string
 void I8ToString(uint8_t value, char *buffer);
 
 // Gets 32-bit current sum divided by 4M (see timer_int.S for details)

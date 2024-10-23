@@ -78,6 +78,20 @@ void SetColors(uint16_t bgColor, uint16_t fgColor)
     g_fgColor = fgColor;
 }
 
+void __attribute__((noinline)) SetUiElementColors(int8_t cursorPosition, int8_t nElement)
+{
+    uint16_t bgColor = CLR_BLACK, fgColor = CLR_WHITE;
+    if (cursorPosition == nElement)
+    {
+        bgColor = CLR_BG_CURSOR;
+        if (cursorPosition & DSD_CURSOR_SKIP)
+            fgColor = CLR_BG_CURSOR;
+    }
+
+    g_bgColor = bgColor;
+    g_fgColor = fgColor;
+}
+
 uint8_t PrintGlyph(uint8_t x, uint8_t y, uint8_t code)
 {
     return x + PrintGlyph(g_font, x, y, code, g_fgColor, g_bgColor);

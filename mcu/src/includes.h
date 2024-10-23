@@ -30,6 +30,7 @@
 #include "display/screen_charger.h"
 #include "display/screen_calibration.h"
 #include "display/screen_music_player.h"
+#include "display/screen_settings.h"
 #include "sound/music.h"
 
 void CheckForFailures();

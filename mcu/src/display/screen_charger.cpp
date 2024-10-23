@@ -62,8 +62,8 @@ void SetNoBatteryOuputValues()
     // We may have a positive current offset after calibration. This means that when ADC reports zero current,
     // we are displaying some non-zero value and there is no way for us to register current lower than this.
     // In this case we can't just set a very small output current since it could be lower than the offset value
-    // and thus PID will always be in the CC mode. So we'll add calibrated current offset to the open current
-    // setting.
+    // and thus PID will always be in the CC mode. To avoid it we add calibrated current offset to the open
+    // current setting.
     g_openCurrentCorrected = g_profile.m_openCurrentX1000 + g_settings.AdcCurrentToDisplayX1000(0);
     g_pidTargetCurrent = g_settings.DisplayX1000CurrentToAdc(g_openCurrentCorrected);
     g_outOn = true;
@@ -75,7 +75,8 @@ void SetWorkingOutputValues()
         (static_cast<uint32_t>(g_profile.m_chargeCurrentX1000)*g_profile.m_stopChargeCurrentPercent)/100
     );
 
-    g_pidTargetVoltage = g_settings.DisplayX1000VoltageToAdc(g_profile.m_cccMode ? 24000 : g_profile.m_chargeVoltageX1000);
+    g_pidTargetVoltage = g_settings.DisplayX1000VoltageToAdc(
+        (g_profile.m_options & COPT_CCC_MODE) ? 24000 : g_profile.m_chargeVoltageX1000);
     g_pidTargetCurrent = g_settings.DisplayX1000CurrentToAdc(g_profile.m_chargeCurrentX1000);
 } 
 
@@ -108,7 +109,6 @@ int8_t DrawBackground()
 
         DRO_BGCOLOR(CLR_DARK_BLUE),
         DRO_FILLRECT | 1, 2, 32, 89, 83,
-        //DRO_STR(25, 67, S, "Set:", 4),
         DRO_STR(17 + 13*3 + 6, 95, S, "A", 1),
         DRO_END
     };
@@ -118,9 +118,6 @@ int8_t DrawBackground()
     uint8_t width = display::GetTextWidthRam(g_profile.m_name, g_profile.m_nameLength);
     display::PrintStringRam((240 - width)/2, 233, g_profile.m_name, g_profile.m_nameLength);
     display::SetBgColor(CLR_BLACK);
-
-    //utils::I8ToString(width, g_buffer);
-    //display::PrintStringRam(0, 233, g_buffer, 3);
 
     return DSD_CURSOR_HIDDEN;
 }
@@ -155,12 +152,16 @@ EState StateMachine(EState state, uint16_t voltage, uint16_t current)
         // Something detected, but it could either be a valid or invalid battery. Switch off the output
         g_outOn = false;
         if (voltage > g_profile.m_chargeVoltageX1000 || voltage < g_profile.m_minBatteryVoltageX1000)
+        {
+            sound::PlayMusic(g_settings.m_badBatteryMusic);
             return EState::INVALID_BATTERY;
+        }
 
         // Battery is OK, start charging process with the voltage measurement
         utils::TimeCapacityReset();
         SetWorkingOutputValues();
         g_batteryChargeBarPosition = -CHARGE_BAR_WIDTH;
+        sound::PlayMusic(g_settings.m_chargeStartMusic);
         return EState::MEASURING_VOLTAGE;
 
     case EState::INVALID_BATTERY:
@@ -215,8 +216,11 @@ EState StateMachine(EState state, uint16_t voltage, uint16_t current)
         }
 
         // If we're in the CCC mode and we've reached our target voltage, stop the charge
-        if (g_profile.m_cccMode && voltage >= g_profile.m_chargeVoltageX1000)
+        if ((g_profile.m_options & COPT_CCC_MODE) && voltage >= g_profile.m_chargeVoltageX1000)
+        {
+            sound::PlayMusic(g_settings.m_chargeEndMusic);
             return EState::CHARGE_COMPLETE;
+        }
 
         // Switch output back on
         g_outOn = true;
@@ -229,9 +233,10 @@ EState StateMachine(EState state, uint16_t voltage, uint16_t current)
         if (ticksInState >= 1000)
         {
             g_outOn = false;
-            if (g_profile.m_cccMode || !g_chargeCanBeFinished)
+            if ((g_profile.m_options & COPT_CCC_MODE) || !g_chargeCanBeFinished)
                 return EState::MEASURING_VOLTAGE | EState::DONT_ERASE_BACKGROUND;
             
+            sound::PlayMusic(g_settings.m_chargeEndMusic);
             return EState::CHARGE_COMPLETE;
         }
 
@@ -246,6 +251,7 @@ EState StateMachine(EState state, uint16_t voltage, uint16_t current)
             if (++g_noBatteryDetectCount >= 3)
             {
                 SetNoBatteryOuputValues();
+                sound::PlayMusic(g_settings.m_chargeInterruptedMusic);
                 return EState::NO_BATTERY;
             }
         }
@@ -267,9 +273,13 @@ EState StateMachine(EState state, uint16_t voltage, uint16_t current)
 
         // If voltage didn't drop much after that, restart the charge process
         if (static_cast<int16_t>(g_profile.m_restartChargeVoltageX1000 - voltage) < 100)
+        {
+            sound::PlayMusic(g_settings.m_chargeStartMusic);
             return EState::MEASURING_VOLTAGE;
+        }
 
         SetNoBatteryOuputValues();
+        sound::StopMusic();
         return EState::NO_BATTERY;
 
     default:
@@ -460,7 +470,7 @@ void DrawElements(int8_t cursorPosition, uint8_t ticksElapsed)
 
     // Charge mode
     display::SetBgColor(cursorPosition == UI_CCCMODE ? CLR_BG_CURSOR : CLR_DARK_BLUE);
-    if (g_profile.m_cccMode)
+    if (g_profile.m_options & COPT_CCC_MODE)
     {
         // Width = 17*3 = 51 px
         static const char pm_cccMode[] PROGMEM = "CCC";
@@ -490,7 +500,7 @@ bool OnClick(int8_t cursorPosition)
 {
     if (cursorPosition == UI_CCCMODE)
     {
-        g_profile.m_cccMode = !g_profile.m_cccMode;
+        g_profile.m_options ^= COPT_CCC_MODE;
         if (g_state == EState::MEASURING_VOLTAGE || g_state == EState::CHARGING)
             SetWorkingOutputValues();
 

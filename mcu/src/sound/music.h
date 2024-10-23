@@ -8,13 +8,8 @@ struct SMelody
     const uint8_t* m_data;
 };
 
-struct SMelodies
-{
-    uint8_t m_count;
-    SMelody m_melodies[];
-};
-
-extern const SMelodies pm_melodies PROGMEM;
+#define MELODIES_COUNT 14
+extern const SMelody pm_melodies[MELODIES_COUNT] PROGMEM;
 
 extern "C" {
 // How many 100 Hz ticks of key beep remains (must be accessed from assembler code)
