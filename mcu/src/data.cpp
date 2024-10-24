@@ -4,8 +4,6 @@
 // Include the main include file to instantiate all defined variables
 #include "includes.h"
 
-#include <avr/eeprom.h>
-
 uint16_t SSettings::AdcVoltageToDisplayX1000(uint16_t adcVoltage)
 {
     // Vx1000 = (ADCv + m_voltageOffset)*m_voltage4096Value/4096
@@ -85,6 +83,7 @@ void SSettings::ResetToDefault()
         .m_chargeEndMusic = 3,
         .m_chargeInterruptedMusic = 5,
         .m_badBatteryMusic = 7,
+        .m_chargerProfileNumber = 0,
         .m_psSettings = {12000, 1000},
         .m_psProfiles =
         {

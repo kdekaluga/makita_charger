@@ -6,6 +6,8 @@
 #endif
 
 #define EEPROM_ADDR_SETTINGS 0x0000
+#define EEPROM_ADDR_PROFILES 0x0200
+#define EEPROM_PROFILES_COUNT 10
 
 #include <stdint.h>
 
@@ -133,6 +135,9 @@ struct SSettings
     uint8_t m_chargeEndMusic;
     uint8_t m_chargeInterruptedMusic;
     uint8_t m_badBatteryMusic;
+
+    // Current charger profile number
+    uint8_t m_chargerProfileNumber;
 
     // Voltage and current settings for the power supply mode
     SPsProfile m_psSettings;

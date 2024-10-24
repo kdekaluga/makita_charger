@@ -215,18 +215,6 @@ int main()
     screen::calibration::g_voltageX1000 = 23500;
     screen::calibration::g_currentX1000 = 6000;
 
-    static const char pm_profileName[] PROGMEM = "Test 4.2 V profile"; //"Test 4.2 V profile";
-    memcpy_PF(screen::charger::g_profile.m_name, reinterpret_cast<uint_farptr_t>(pm_profileName), 18);
-    screen::charger::g_profile.m_nameLength = 18;
-    screen::charger::g_profile.m_chargeVoltageX1000 = 4200;
-    screen::charger::g_profile.m_chargeCurrentX1000 = 500;
-    screen::charger::g_profile.m_openVoltageX1000 = 4700;
-    screen::charger::g_profile.m_openCurrentX1000 = 30;
-    screen::charger::g_profile.m_minBatteryVoltageX1000 = 3000;
-    screen::charger::g_profile.m_restartChargeVoltageX1000 = 4100;
-    screen::charger::g_profile.m_options = 0;
-    screen::charger::g_profile.m_stopChargeCurrentPercent = 10;
-
     utils::InitMcu();
     display::Init();
 
@@ -241,6 +229,9 @@ int main()
         display::MessageBox(display::pm_warning, pm_invalidSettings, MB_WARNING | MB_OK);
     }
 
+    // Load the last selected charger profile
+    charger::g_profile.LoadFromEeprom(g_settings.m_chargerProfileNumber);
+    
     // Initially start in the charger mode
     uint8_t mode = 0;
     for (;;)

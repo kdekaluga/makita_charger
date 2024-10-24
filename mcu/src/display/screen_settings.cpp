@@ -47,7 +47,7 @@ void DrawBackgroundPage1()
         DRO_FILLRECT | 1, 0, 30, 240, 210,
 
         DRO_FGCOLOR(CLR_GRAY),
-        DRO_STR(7, 56, S, "Charge stop sound", 17),
+        DRO_STR(7, 56, S, "Charge break sound", 18),
         DRO_STR(7, 112, S, "Bad battery sound", 17),
         DRO_END
     };

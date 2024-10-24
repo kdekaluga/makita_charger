@@ -18,6 +18,7 @@
 #define MAX_CURRENT 6000
 
 #include <avr/pgmspace.h>
+#include <avr/eeprom.h>
 #include <stdint.h>
 
 #include "common.h"

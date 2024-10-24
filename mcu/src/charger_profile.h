@@ -50,8 +50,6 @@ struct SProfile
 {
     // Profile name, up to 20 characters
     char m_name[20];
-
-    // Profile name length
     uint8_t m_nameLength;
 
     // Target charge voltage and default charge current (current can be changed in the UI)
@@ -79,6 +77,21 @@ struct SProfile
 
     // Charge options flags (defined above)
     uint8_t m_options;
+
+    // Pure random number, chosen by a fair dice roll
+    static constexpr uint8_t MagicNumber = 0x18;
+    uint8_t m_magicNumber;
+
+    // Loads profile from the EEPROM. If profile was not stored there yet, loads it
+    // from the program memory
+    void LoadFromEeprom(uint8_t nProfile);
+    void SaveToEeprom(uint8_t nProfile);
+
+private:
+    static SProfile* GetProfileEepromAddr(uint8_t nProfile);
 };
+
+var SProfile g_profile;
+var SProfile g_helpProfile;
 
 } // namespace charger

@@ -5,11 +5,6 @@ namespace screen::music {
 static const char pm_title[] PROGMEM = "Music player";
 static const char pm_exit[] PROGMEM = "Exit";
 
-uint8_t GetItemCount()
-{
-    return MELODIES_COUNT + 1;
-}
-
 uint8_t DrawItem(uint8_t x, uint8_t y, uint8_t nItem)
 {
     if (!nItem)
@@ -30,10 +25,10 @@ uint8_t GetItemWidth(uint8_t nItem)
 
 static const display::Menu pm_playerMenu PROGMEM =
 {
-    &GetItemCount,
+    nullptr,
     &DrawItem,
     &GetItemWidth,
-    0,
+    MELODIES_COUNT + 1,
     pm_title
 };
 

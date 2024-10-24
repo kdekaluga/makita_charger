@@ -4,11 +4,7 @@
 
 namespace screen::charger {
 
-using ::charger::EState;
-
-var ::charger::SProfile g_profile;
-
-var EState g_state;
+var ::charger::EState g_state;
 var uint16_t g_ticksInState;
 
 var uint8_t g_batteryChargePercent;
@@ -19,6 +15,7 @@ var uint16_t g_noBatteryVoltage;
 var uint16_t g_openCurrentCorrected;
 var uint16_t g_chargeFinishCurrentThreshold;
 
+var uint16_t g_noBatteryThresholdCurrent;
 var uint8_t g_noBatteryDetectCount;
 var bool g_chargeCanBeFinished;
 

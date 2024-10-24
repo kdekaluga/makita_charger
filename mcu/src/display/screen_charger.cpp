@@ -2,6 +2,10 @@
 
 namespace screen::charger {
 
+using ::charger::EState;
+using ::charger::g_profile;
+using ::charger::g_helpProfile;
+
 #define CHARGE_BAR_WIDTH 7
 
 #define UI_ELEMENT_COUNT 4
@@ -9,6 +13,43 @@ namespace screen::charger {
 #define UI_CURRENT1 1
 #define UI_CURRENT2 2
 #define UI_CURRENT3 3
+
+static const char pm_cmTitle[] PROGMEM = "Select profile";
+static const char pm_cmReturn[] PROGMEM = "Return";
+static const char pm_cmExit[] PROGMEM = "Exit Charger";
+
+uint8_t CmDrawItem(uint8_t x, uint8_t y, uint8_t nItem)
+{
+    if (nItem == 0)
+        return display::PrintString(x, y, pm_cmReturn);
+
+    if (nItem == 1)
+        return display::PrintString(x, y, pm_cmExit);
+
+    g_helpProfile.LoadFromEeprom(nItem - 2);
+    return display::PrintStringRam(x, y, g_helpProfile.m_name, g_helpProfile.m_nameLength);
+}
+
+uint8_t CmGetItemWidth(uint8_t nItem)
+{
+    if (nItem == 0)
+        return display::GetTextWidth(pm_cmReturn);
+    
+    if (nItem == 1)
+        return display::GetTextWidth(pm_cmExit);
+
+    g_helpProfile.LoadFromEeprom(nItem - 2);
+    return display::GetTextWidthRam(g_helpProfile.m_name, g_helpProfile.m_nameLength);    
+}
+
+static const display::Menu pm_chargerMenu PROGMEM =
+{
+    nullptr,
+    &CmDrawItem,
+    &CmGetItemWidth,
+    EEPROM_PROFILES_COUNT + 2,
+    pm_cmTitle
+};
 
 uint16_t SmoothValue(uint16_t value, uint16_t& prevValue, int8_t& trend)
 {
@@ -64,7 +105,9 @@ void SetNoBatteryOuputValues()
     // In this case we can't just set a very small output current since it could be lower than the offset value
     // and thus PID will always be in the CC mode. To avoid it we add calibrated current offset to the open
     // current setting.
-    g_openCurrentCorrected = g_profile.m_openCurrentX1000 + g_settings.AdcCurrentToDisplayX1000(0);
+    uint16_t correction = g_settings.AdcCurrentToDisplayX1000(0);
+    g_openCurrentCorrected = g_profile.m_openCurrentX1000 + correction;
+    g_noBatteryThresholdCurrent = 10 + correction;
     g_pidTargetCurrent = g_settings.DisplayX1000CurrentToAdc(g_openCurrentCorrected);
     g_outOn = true;
 }
@@ -229,6 +272,10 @@ EState StateMachine(EState state, uint16_t voltage, uint16_t current)
         return EState::CHARGING | EState::DONT_ERASE_BACKGROUND;
 
     case EState::CHARGING:
+        // Don't do anything in the first 100 ms
+        if (ticksInState < 10)
+            return EState::DO_NOTHING;
+
         // Once in 10 seconds check whether we've charged the battery and measure the battery voltage
         if (ticksInState >= 1000)
         {
@@ -242,25 +289,22 @@ EState StateMachine(EState state, uint16_t voltage, uint16_t current)
 
         // If the charge current exceeds the threshold value at least once in 10 seconds,
         // the charge is not finished yet
-        if (current > g_chargeFinishCurrentThreshold)
+        if (current >= g_chargeFinishCurrentThreshold)
             g_chargeCanBeFinished = false;
 
         // Battery was removed?
-        if (current < g_openCurrentCorrected)
-        {
-            if (++g_noBatteryDetectCount >= 3)
-            {
-                SetNoBatteryOuputValues();
-                sound::PlayMusic(g_settings.m_chargeInterruptedMusic);
-                return EState::NO_BATTERY;
-            }
-        }
-        else
+        if (current >= g_noBatteryThresholdCurrent)
         {
             g_noBatteryDetectCount = 0;
+            return EState::DO_NOTHING;
         }
 
-        return EState::DO_NOTHING;
+        if (++g_noBatteryDetectCount < 3)
+            return EState::DO_NOTHING;
+
+        SetNoBatteryOuputValues();
+        sound::PlayMusic(g_settings.m_chargeInterruptedMusic);
+        return EState::NO_BATTERY;
 
     case EState::CHARGE_COMPLETE:
         // Wait until voltage drops below the charge restart level
@@ -375,8 +419,6 @@ void DrawElements(int8_t cursorPosition, uint8_t ticksElapsed)
         g_ticksInState = 0;
     }
 
-    voltage = SmoothValue(voltage, g_smoothVoltageValue, g_smoothVoltageTrend);
-    current = SmoothValue(current, g_smoothCurrentValue, g_smoothCurrentTrend);
     display::SetBgColor(CLR_BLACK);
 
     if (state == EState::NO_BATTERY)
@@ -404,6 +446,8 @@ void DrawElements(int8_t cursorPosition, uint8_t ticksElapsed)
             DRO_END
         };
 
+        voltage = SmoothValue(voltage, g_smoothVoltageValue, g_smoothVoltageTrend);
+
         display::DrawObjects(pm_invalidBatteryObjects, CLR_BLACK, RGB(255, 153, 54));
         display::SetColor(RGB(255, 153, 54));
         display::SetSans18();
@@ -417,6 +461,9 @@ void DrawElements(int8_t cursorPosition, uint8_t ticksElapsed)
 
         if (state == EState::CHARGING && g_ticksInState >= 20)
         {
+            voltage = SmoothValue(voltage, g_smoothVoltageValue, g_smoothVoltageTrend);
+            current = SmoothValue(current, g_smoothCurrentValue, g_smoothCurrentTrend);
+
             display::SetSans18();
             display::SetColor(CLR_VOLTAGE);
             utils::VoltageToString(voltage, true);
@@ -489,7 +536,7 @@ void DrawElements(int8_t cursorPosition, uint8_t ticksElapsed)
         display::PrintString(10, 67, pm_cccvMode);
     }
 
-    g_batteryChargeBarPosition += (ticksElapsed << 5);
+    g_batteryChargeBarPosition += static_cast<int16_t>(ticksElapsed) << 5;
     int8_t* chargeBarPos = reinterpret_cast<int8_t*>(&g_batteryChargeBarPosition) + 1;
     if (*chargeBarPos >= static_cast<int8_t>(g_batteryChargePixels))
         *chargeBarPos -= g_batteryChargePixels + CHARGE_BAR_WIDTH;
@@ -529,18 +576,47 @@ void OnChangeValue(int8_t cursorPosition, int8_t delta)
 
 bool OnLongClick(int8_t cursorPosition)
 {
-    static const char pm_exit[] PROGMEM = "Exit";
-    static const char pm_exitConfitmation[] PROGMEM =
-        "Are you sure want\nto exit charger?\nThis will stop\nthe charge.";
+    static const char pm_stopTitle[] PROGMEM = "Stop charge";
+    static const char pm_stopText[] PROGMEM =
+        "This will stop the\ncharge process.\nAre you sure want\nto continue?";
 
-    // If we're not charging, exit without confirmation
-    if (g_state != EState::MEASURING_VOLTAGE && g_state != EState::CHARGING)
+    // Switch off the output. This is very important since we could be in the
+    // CCC mode (where the output voltage is huge and we must periodically switch it off)
+    // and the user may left the message box unattended forever.
+    g_outOn = false;
+
+    // If we're charging, ask the user whether they want to continue
+    if (g_state == EState::MEASURING_VOLTAGE || g_state == EState::CHARGING)
+    {
+        if (display::MessageBox(pm_stopTitle, pm_stopText, MB_YESNO | MB_INFO | MB_DEFAULT_NO) != 0)
+        {
+            DrawBackground();
+
+            // Switch the output back on and reset the tick counter,
+            // so no action will be performed right now
+            g_outOn = true;
+            g_ticksInState = 0;
+
+            return false;
+        }
+    }
+
+    uint8_t result = pm_chargerMenu.Show();
+
+    // Exit
+    if (result == 1)
         return true;
 
-    if (display::MessageBox(pm_exit, pm_exitConfitmation, MB_YESNO | MB_INFO | MB_DEFAULT_NO) == 0)
-        return true;
+    // Switch profile
+    if (result)
+    {
+        result -= 2;
+        g_settings.m_chargerProfileNumber = result;
+        g_profile.LoadFromEeprom(result);
+    }
 
     DrawBackground();
+    Init();
     return false;
 }
 
