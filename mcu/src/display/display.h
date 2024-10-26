@@ -30,6 +30,8 @@ namespace display {
 extern const char pm_warning[] PROGMEM;
 extern const char pm_failure[] PROGMEM;
 extern const char pm_error[] PROGMEM;
+extern const char pm_yes[] PROGMEM;
+extern const char pm_no[] PROGMEM;
 
 // The font representation idea was taken from the ADAFruit GFX library
 // (with little improvements)
@@ -197,6 +199,8 @@ private:
 #define _DRO_STR18(str) _DRO_STR17(str), str[17]
 #define _DRO_STR19(str) _DRO_STR18(str), str[18]
 #define _DRO_STR20(str) _DRO_STR19(str), str[19]
+#define _DRO_STR21(str) _DRO_STR20(str), str[20]
+#define _DRO_STR22(str) _DRO_STR21(str), str[21]
 
 #define DRO_STR(x, y, size, str, count) _DRO_STRING_##size | count, x, y, _DRO_STR##count(str)
 #define DRO_FGCOLOR(color) _DRO_FGCOLOR, static_cast<uint8_t>(LOBYTE(color)), static_cast<uint8_t>(HIBYTE(color))

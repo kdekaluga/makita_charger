@@ -192,14 +192,15 @@ static const char pm_mainMenu1[] PROGMEM = "Power Supply";
 static const char pm_mainMenu2[] PROGMEM = "Settings";
 static const char pm_mainMenu3[] PROGMEM = "Calibration";
 static const char pm_mainMenu4[] PROGMEM = "Music player";
-static const char pm_mainMenu5[] PROGMEM = "About";
+static const char pm_mainMenu5[] PROGMEM = "Charger profiles";
+static const char pm_mainMenu6[] PROGMEM = "About";
 
 static const display::Menu pm_mainMenu PROGMEM =
 {
     nullptr, nullptr, nullptr,
-    6,
+    7,
     pm_mainMenuTitle,
-    pm_mainMenu0, pm_mainMenu1, pm_mainMenu2, pm_mainMenu3, pm_mainMenu4, pm_mainMenu5
+    pm_mainMenu0, pm_mainMenu1, pm_mainMenu2, pm_mainMenu3, pm_mainMenu4, pm_mainMenu5, pm_mainMenu6
 };
 
 static const char pm_aboutTitle[] PROGMEM = "About";
@@ -259,6 +260,10 @@ int main()
             break;
 
         case 5:
+            screen::charger_profile::Show();
+            break;
+
+        case 6:
             display::MessageBox(pm_aboutTitle, pm_about, MB_OK | MB_INFO);
             break;
         }

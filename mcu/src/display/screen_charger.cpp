@@ -8,11 +8,18 @@ using ::charger::g_helpProfile;
 
 #define CHARGE_BAR_WIDTH 7
 
-#define UI_ELEMENT_COUNT 4
+#define UI_ELEMENT_COUNT 6
+
 #define UI_CCCMODE 0
 #define UI_CURRENT1 1
 #define UI_CURRENT2 2
 #define UI_CURRENT3 3
+#define UI_OPT_3PIN 4
+#define UI_OPT_CHARGE_RESTART 5
+
+constexpr uint8_t ChargeModeYPos = 54;
+constexpr uint8_t CurrentYPos = 81;
+constexpr uint8_t ChargeOptionsYPos = 108;
 
 static const char pm_cmTitle[] PROGMEM = "Select profile";
 static const char pm_cmReturn[] PROGMEM = "Return";
@@ -152,7 +159,7 @@ int8_t DrawBackground()
 
         DRO_BGCOLOR(CLR_DARK_BLUE),
         DRO_FILLRECT | 1, 2, 32, 89, 83,
-        DRO_STR(17 + 13*3 + 6, 95, S, "A", 1),
+        DRO_STR(17 + 13*3 + 6, CurrentYPos, S, "A", 1),
         DRO_END
     };
     display::DrawObjects(pm_bgObjects, CLR_RED_BEAUTIFUL, CLR_WHITE);
@@ -176,13 +183,13 @@ EState StateMachine(EState state, uint16_t voltage, uint16_t current)
             return EState::DO_NOTHING;
 
         // Wait until the output voltage is quite stable
-        if (ABS(static_cast<int16_t>(voltage - g_noBatteryVoltage)) > 100)
+        if (ABS(static_cast<int16_t>(voltage - g_previousBatteryVoltage)) > 100)
         {
-            g_noBatteryVoltage = voltage;
+            g_previousBatteryVoltage = voltage;
             return EState::RESET_TICKS;
         }
 
-        g_noBatteryVoltage = voltage;
+        g_previousBatteryVoltage = voltage;
 
         // Wait until we detect something
         if (g_pidMode != PID_MODE_CC && static_cast<int16_t>(voltage - g_profile.m_openVoltageX1000) < 200)
@@ -210,7 +217,7 @@ EState StateMachine(EState state, uint16_t voltage, uint16_t current)
     case EState::INVALID_BATTERY:
         // Wait until either the voltage drops by 100 mV or drops below 100 mV.
         // This would mean that either we have a short circuit or the invalid battery has been removed.
-        if (voltage > 100 && g_noBatteryVoltage - voltage < 100)
+        if (voltage > 100 && g_previousBatteryVoltage - voltage < 100)
             return EState::RESET_TICKS;
 
         // Wait 1000 ms more
@@ -309,22 +316,33 @@ EState StateMachine(EState state, uint16_t voltage, uint16_t current)
     case EState::CHARGE_COMPLETE:
         // Wait until voltage drops below the charge restart level
         if (voltage >= g_profile.m_restartChargeVoltageX1000)
+        {
+            g_previousBatteryVoltage = voltage;
             return EState::RESET_TICKS;
+        }
         
         // Wait 1.5 seconds more
         if (ticksInState < 150)
             return EState::DO_NOTHING;
 
-        // If voltage didn't drop much after that, restart the charge process
-        if (static_cast<int16_t>(g_profile.m_restartChargeVoltageX1000 - voltage) < 100)
+        // If the battery voltage drops quite fast (more than 100 mV in 1.5 s),
+        // we consider that a battery was removed
+        if (static_cast<int16_t>(g_previousBatteryVoltage - voltage) > 100)
+        {
+            SetNoBatteryOuputValues();
+            sound::StopMusic();
+            return EState::NO_BATTERY;
+        }
+
+        // Either restart the charge (if this option is on) or repeat the check again
+        if (g_profile.m_options & COPT_RESTART_CHARGE)
         {
             sound::PlayMusic(g_settings.m_chargeStartMusic);
             return EState::MEASURING_VOLTAGE;
         }
 
-        SetNoBatteryOuputValues();
-        sound::StopMusic();
-        return EState::NO_BATTERY;
+        g_previousBatteryVoltage = voltage;
+        return EState::RESET_TICKS;
 
     default:
         Init();
@@ -513,7 +531,7 @@ void DrawElements(int8_t cursorPosition, uint8_t ticksElapsed)
 
     // Set current
     utils::CurrentToString(g_profile.m_chargeCurrentX1000);
-    display::DrawSettableDecimal(17, 95, 4, cursorPosition - UI_CURRENT1, CLR_WHITE, CLR_DARK_BLUE);
+    display::DrawSettableDecimal(17, CurrentYPos, 4, cursorPosition - UI_CURRENT1, CLR_WHITE, CLR_DARK_BLUE);
 
     // Charge mode
     display::SetBgColor(cursorPosition == UI_CCCMODE ? CLR_BG_CURSOR : CLR_DARK_BLUE);
@@ -523,18 +541,31 @@ void DrawElements(int8_t cursorPosition, uint8_t ticksElapsed)
         static const char pm_cccMode[] PROGMEM = "CCC";
         static const display::Rect pm_cccRects[] PROGMEM =
         {
-            {10, 46, 11, 27},
-            {10 + 11 + 51, 46, 11, 27},
+            {10, ChargeModeYPos - 21, 11, 27},
+            {10 + 11 + 51, ChargeModeYPos - 21, 11, 27},
         };
         display::FillRects(pm_cccRects, 2, display::g_bgColor);
-        display::PrintString(10 + 11, 67, pm_cccMode);
+        display::PrintString(10 + 11, ChargeModeYPos, pm_cccMode);
     }
     else
     {
         // Width = 17*3 + 7 + 15 = 73 px
         static const char pm_cccvMode[] PROGMEM = "CC/CV";
-        display::PrintString(10, 67, pm_cccvMode);
+        display::PrintString(10, ChargeModeYPos, pm_cccvMode);
     }
+
+    const auto DrawOption = [&](uint8_t x, uint8_t option, uint8_t uiPosition, const char* text)
+    {
+        display::SetBgColor(cursorPosition == uiPosition ? CLR_BG_CURSOR : CLR_DARK_BLUE);
+        display::SetColor((g_profile.m_options & option) ? CLR_WHITE : RGB(192, 0, 0));
+        display::PrintString(x, ChargeOptionsYPos, text);
+    };
+
+    // Options
+    static const char pm_opt3Pin[] PROGMEM = "3p";
+    static const char pm_optRestart[] PROGMEM = "Rst";
+    DrawOption(13, COPT_USE_3RD_PIN, UI_OPT_3PIN, pm_opt3Pin);
+    DrawOption(47, COPT_RESTART_CHARGE, UI_OPT_CHARGE_RESTART, pm_optRestart);
 
     g_batteryChargeBarPosition += static_cast<int16_t>(ticksElapsed) << 5;
     int8_t* chargeBarPos = reinterpret_cast<int8_t*>(&g_batteryChargeBarPosition) + 1;
@@ -551,6 +582,18 @@ bool OnClick(int8_t cursorPosition)
         if (g_state == EState::MEASURING_VOLTAGE || g_state == EState::CHARGING)
             SetWorkingOutputValues();
 
+        return false;
+    }
+
+    if (cursorPosition == UI_OPT_3PIN)
+    {
+        g_profile.m_options ^= COPT_USE_3RD_PIN;
+        return false;
+    }
+
+    if (cursorPosition == UI_OPT_CHARGE_RESTART)
+    {
+        g_profile.m_options ^= COPT_RESTART_CHARGE;
         return false;
     }
 

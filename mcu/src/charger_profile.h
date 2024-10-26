@@ -40,11 +40,16 @@ inline EState operator |(EState op1, EState op2)
     return static_cast<EState>(static_cast<uint8_t>(op1) | static_cast<uint8_t>(op2));
 }
 
+// Charge profile options
+
 // Whether to use Makita 3rd pin to detect battery issues
 #define COPT_USE_3RD_PIN 0x01
 
 // Whether to use continuos constant current mode
 #define COPT_CCC_MODE 0x02
+
+// Whether to automatically restart charging when battery voltage drops
+#define COPT_RESTART_CHARGE 0x04
 
 struct SProfile
 {

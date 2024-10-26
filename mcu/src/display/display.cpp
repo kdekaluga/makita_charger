@@ -81,7 +81,7 @@ void SetColors(uint16_t bgColor, uint16_t fgColor)
 void __attribute__((noinline)) SetUiElementColors(int8_t cursorPosition, int8_t nElement)
 {
     uint16_t bgColor = CLR_BLACK, fgColor = CLR_WHITE;
-    if (cursorPosition == nElement)
+    if ((cursorPosition & 0x7F) == nElement)
     {
         bgColor = CLR_BG_CURSOR;
         if (cursorPosition & DSD_CURSOR_SKIP)
