@@ -76,7 +76,7 @@ struct SProfile
     // drops below this level, the charge is restarted.
     uint16_t m_restartChargeVoltageX1000;
 
-    // When the charge current drops below this percent of its initial value, the charge
+    // When the charge current drops below this percentage of the initial value, the charge
     // is considered complete (for the CC/CV mode).
     uint8_t m_stopChargeCurrentPercent;
 

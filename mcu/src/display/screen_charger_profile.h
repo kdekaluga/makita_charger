@@ -5,6 +5,8 @@
 
 namespace screen::charger_profile {
 
-void Show();
+var bool g_bCurrentProfile;
+
+void Show(bool bCurrentProfile);
 
 } // namespace screen::charger_profile

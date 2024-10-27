@@ -111,16 +111,24 @@ void DrawElements(int8_t cursorPosition, uint8_t ticksElapsed)
     display::DrawSettableDecimal(240 - 10 - 13*3, 191, 3, (nSelected & 0x7F) == 2 ? nSelected : 3, CLR_GRAY, CLR_BLACK);
 
     // Voltage
+    // In the calibration screen we need to display voltage and current
+    // with the maximum possible resolution
     display::SetSans18();
     display::SetColors(CLR_DARK_BLUE, CLR_VOLTAGE);
     voltage = g_settings.AdcVoltageToDisplayX1000(voltage);
-    utils::VoltageToString(voltage, true);
+    utils::I16ToString(voltage, g_buffer, 1);
+    g_buffer[5] = g_buffer[4];
+    g_buffer[4] = g_buffer[3];
+    g_buffer[3] = g_buffer[2];
+    g_buffer[2] = '.';
     display::PrintStringRam(10, 231, g_buffer, 6);
 
     // Current
     display::SetColor(CLR_CURRENT);
     current = g_settings.AdcCurrentToDisplayX1000(current);
-    utils::CurrentToString(current);
+    utils::I16ToString(current, g_buffer, 1);
+    g_buffer[0] = g_buffer[1];
+    g_buffer[1] = '.';
     display::PrintStringRam(240 - 10 - 23 - 19*3 - 9, 231, g_buffer, 5);
 }
 

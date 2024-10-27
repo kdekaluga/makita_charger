@@ -260,7 +260,7 @@ int main()
             break;
 
         case 5:
-            screen::charger_profile::Show();
+            screen::charger_profile::Show(false);
             break;
 
         case 6:

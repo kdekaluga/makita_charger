@@ -95,7 +95,7 @@ int8_t DrawBackgroundP1()
     };
     display::DrawObjects(pm_bgObjects, CLR_RED_BEAUTIFUL, CLR_WHITE);
 
-    return 0;
+    return UI_VOLTAGE;
 }
 
 void DrawBackgroundP2()
@@ -314,6 +314,16 @@ void OnChangeValue(int8_t cursorPosition, int8_t delta)
 
 bool OnLongClick(int8_t cursorPosition)
 {
+    // No menu if we're editing the current profile
+    if (g_bCurrentProfile)
+    {
+        ::charger::g_profile = g_helpProfile;
+        return true;
+    }
+
+    g_helpProfile.SaveToEeprom(g_settings.m_chargerProfileNumber);
+
+    // Show profile selection menu
     return true;
 }
 
@@ -327,10 +337,14 @@ static const display::UiScreen pm_profileScreen PROGMEM =
     &OnLongClick
 };
 
-void Show()
+void Show(bool bCurrentProfile)
 {
     g_previousCursorPosition = 0;
-    g_helpProfile.LoadFromEeprom(g_settings.m_chargerProfileNumber);
+    g_bCurrentProfile = bCurrentProfile;
+    if (bCurrentProfile)
+        g_helpProfile = ::charger::g_profile;
+    else
+        g_helpProfile.LoadFromEeprom(g_settings.m_chargerProfileNumber);
 
     pm_profileScreen.Show();
 }
