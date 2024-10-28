@@ -4,64 +4,11 @@
 
 .global TIMER0_OVF_vect
 
-TIMER0_OVF_vect:
-	push	R16
-	in		R16, (SREG)
-	push    R16
-	push    R17
-    push    R18
-    push    R19
-
-    ; Perform PWM dithering to increase its resolution
-    lds     R16, (g_pwmValue + 0)
-    lds     R17, (g_pwmValue + 1)
-    lds     R19, (g_pwmLowPos)
-    add     R16, R19
-    ldi     R19, 0
-    adc     R17, R19
-    out     (OCR0A), R17
-    sts     (g_pwmLowPos), R16
-
-    ; if the target PWM is 0, disable it completely 
-    ldi     R17, BV(COM0A1) | BV(COM0B1) | BV(WGM01) | BV(WGM00)
-    brne    .+2
-    ldi     R17, BV(COM0B1) | BV(WGM01) | BV(WGM00)
-    out     (TCCR0A), R17
-
-    ; Algorithm: we start the voltage value conversion on even interrupts and
-    ; the current value conversion on the odd ones. Then we sum up four values
-    ; of each kind (totally 8 interrupts) and launch the PID routine to adjust
-    ; the PWM width
-    lds     R18, (g_timerCounter)
-
-    ; Read results of the previous ADC conversion
-    lds     R16, (ADCL)
-    lds     R17, (ADCH)
-
-    sbrc    R18, 0
-    rjmp    tm0_process_current
-
-    ; Start the current channel conversion
-    ldi     R19, ADC_CHANNEL_CURRENT
-    sts     (ADMUX), R19
-    ldi     R19, BV(ADEN) | BV(ADSC) | BV(ADPS2);
-    sts     (ADCSRA), R19
-
-    ; Update the voltage accumulator
-    lds     R19, (g_adcVoltageAcc + 0)
-    add     R16, R19
-    lds     R19, (g_adcVoltageAcc + 1)
-    adc     R17, R19
-    sts     (g_adcVoltageAcc + 0), R16
-    sts     (g_adcVoltageAcc + 1), R17
-
-    rjmp    tm0_1
-
 tm0_process_current:
     ; Start the voltage channel conversion
     ldi     R19, ADC_CHANNEL_VOLTAGE
     sts     (ADMUX), R19
-    ldi     R19, BV(ADEN) | BV(ADSC) | BV(ADPS2);
+    ldi     R19, ADC_SRA_VALUE
     sts     (ADCSRA), R19
 
     ; Check for a short circuit
@@ -86,11 +33,156 @@ tm0_no_short_circuit:
     adc     R17, R19
     sts     (g_adcCurrentAcc + 0), R16
     sts     (g_adcCurrentAcc + 1), R17
+    rjmp    tm0_1
+
+
+TIMER0_OVF_vect:
+	push	R16
+	in		R16, (SREG)
+	push    R16
+	push    R17
+    push    R18
+    push    R19
+    ; 11c
+
+    ; Algorithm: we start the voltage value conversion on even interrupts and
+    ; the current value conversion on the odd ones. Then we sum up four values
+    ; of each kind (totally 8 interrupts) and launch the PID routine to adjust
+    ; the PWM width
+    lds     R18, (g_timerCounter)
+    lds     R17, (g_pwmValue + 1)
+
+    ; We always start ADC conversions manually, thus they are completely alignled
+    ; with the PWM generation. This makes measurements more precise, but it was
+    ; found expretimentally that if we start a conversion near the point when the PWM
+    ; switch is turned off, we got some slight error (~20 ADC units). It happens around
+    ; ~6.8 V at the output and we can definitely live with it, but it was decided to
+    ; improve the measurement logic to avoid starting a conversion at the aforementioned
+    ; moment.
+    ;
+    ; So now we have two similar sections in the code - the standard one which starts
+    ; a conversion after ~43 clocks from the interrupt start and the early measurement
+    ; one which starts a conversion after ~26 clocks from the interrupt start. The time
+    ; difference between them is 17 CPU clocks or a little bit more than one ADC cycle.
+    ;
+    ; Finally we check when the PWM switch is turned off by analyzing the OCR0A value
+    ; and choose one of the measurement logics to avoid measurement disturbance.
+    ;
+    ; Experimentally found good range: 55 - 75
+    cpi     R17, 65
+    brcc    tm0_early_start
+
+    ; Perform PWM dithering to increase its resolution
+    lds     R16, (g_pwmValue + 0)
+    lds     R19, (g_pwmLowPos)
+    add     R16, R19
+    ldi     R19, 0
+    adc     R17, R19
+    out     (OCR0A), R17
+    sts     (g_pwmLowPos), R16
+
+    ; if the target PWM is 0, disable it completely 
+    ldi     R17, BV(COM0A1) | BV(COM0B1) | BV(WGM01) | BV(WGM00)
+    brne    .+2
+    ldi     R17, BV(COM0B1) | BV(WGM01) | BV(WGM00)
+    out     (TCCR0A), R17
+
+    ; Read results of the previous ADC conversion
+    lds     R16, (ADCL)
+    lds     R17, (ADCH)
+
+    sbrc    R18, 5
+    rjmp    tm0_process_current
+
+    ; Start the current channel conversion
+    ldi     R19, ADC_CHANNEL_CURRENT
+    sts     (ADMUX), R19
+    ldi     R19, ADC_SRA_VALUE
+    sts     (ADCSRA), R19
+    ; 43c
+
+    ; Update the voltage accumulator
+    lds     R19, (g_adcVoltageAcc + 0)
+    add     R16, R19
+    lds     R19, (g_adcVoltageAcc + 1)
+    adc     R17, R19
+    sts     (g_adcVoltageAcc + 0), R16
+    sts     (g_adcVoltageAcc + 1), R17
+    rjmp    tm0_1
+
+
+; Eraly measurement version
+tm0_early_start:
+    ; 18c
+    ; R17 = g_pwmValue + 1
+    ; R18 = g_timerCounter
+    sbrc    R18, 5
+    rjmp    tm0_early_process_current
+
+    ; Start the current channel conversion
+    ldi     R19, ADC_CHANNEL_CURRENT
+    sts     (ADMUX), R19
+    ldi     R19, ADC_SRA_VALUE
+    sts     (ADCSRA), R19
+    ; 26c
+
+    ; Voltage
+    lds     R19, (g_adcVoltageAcc + 0)
+    lds     R16, (ADCL)
+    add     R19, R16
+    lds     R16, (ADCH)
+    sts     (g_adcVoltageAcc + 0), R19
+    lds     R19, (g_adcVoltageAcc + 1)
+    adc     R19, R16
+    sts     (g_adcVoltageAcc + 1), R19
+
+    rjmp    tm0_early_dither
+
+tm0_early_process_current:
+    ; Start the voltage channel conversion
+    ldi     R19, ADC_CHANNEL_VOLTAGE
+    sts     (ADMUX), R19
+    ldi     R19, ADC_SRA_VALUE
+    sts     (ADCSRA), R19
+
+    ; Current
+    lds     R19, (g_adcCurrentAcc + 0)
+    lds     R16, (ADCL)
+    add     R19, R16
+    lds     R16, (ADCH)
+    sts     (g_adcCurrentAcc + 0), R19
+    lds     R19, (g_adcCurrentAcc + 1)
+    adc     R19, R16
+    sts     (g_adcCurrentAcc + 1), R19
+
+    cpi     R16, 3
+    brcs    tm0_early_dither
+
+    clr     R19
+    out     (OCR0A), R19
+    sts     (g_pwmValue + 0), R19
+    sts     (g_pwmValue + 1), R19
+    sts     (g_pidIntegral + 0), R19
+    sts     (g_pidIntegral + 1), R19
+    sts     (g_pidIntegral + 2), R19
+
+tm0_early_dither:
+    ; R17 = g_pwmValue + 1
+    lds     R16, (g_pwmValue + 0)
+    lds     R19, (g_pwmLowPos)
+    add     R16, R19
+    ldi     R19, 0
+    adc     R17, R19
+    out     (OCR0A), R17
+    sts     (g_pwmLowPos), R16
+
+    ; OCR0A here cannot be 0, so always enable PWM (-2 clocks)
+    ldi     R17, BV(COM0A1) | BV(COM0B1) | BV(WGM01) | BV(WGM00)
+    out     (TCCR0A), R17
 
 tm0_1:
     ; Increment the interrupt number
-    inc     R18
-    andi    R18, 0x07
+    subi    R18, -0x20
     sts     (g_timerCounter), R18
     breq    tm0_8th
 
@@ -115,6 +207,8 @@ tm0_8th:
     push    R21
     
     ; *** Voltage and current 256-sample averager ***
+    lds     R16, (g_adcCurrentAcc + 0)
+    lds     R17, (g_adcCurrentAcc + 1)
     lds     R18, (g_adcVoltageAcc + 0)
     lds     R19, (g_adcVoltageAcc + 1)
     ; R17:R16 = g_adcCurrentAcc

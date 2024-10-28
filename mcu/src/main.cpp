@@ -154,7 +154,7 @@ void RequestTemperature()
     case 2:
         // Request the temperature
         twi::g_twiBuffer[0] = 99;
-        twi::g_twiBuffer[1] = 0;
+        twi::g_twiBuffer[1] = 0xF0;
         twi::RecvBytes(TWI_ADDR_TMP100BOARD, twi::g_twiBuffer, 2);
 
     default:

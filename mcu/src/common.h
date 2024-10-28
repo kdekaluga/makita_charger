@@ -35,6 +35,8 @@
 #define ADC_CHANNEL_VOLTAGE 0
 #define ADC_CHANNEL_CURRENT 1
 
+#define ADC_SRA_VALUE (BV(ADEN) | BV(ADSC) | BV(ADPS2))
+
 #define PID_MODE_OFF 0x00
 #define PID_MODE_CV 0x01
 #define PID_MODE_CC 0x02
