@@ -3,7 +3,8 @@
 namespace screen::charger_profile {
 
 using screen::settings::g_previousCursorPosition;
-using ::charger::g_helpProfile;
+using ::charger::g_editorProfile;
+using ::charger::g_tempProfile;
 
 #define UI_ELEMENT_COUNT (20 + (4 + 3 + 4 + 2) + (4 + 4 + 3) + 3)
 #define UI_PROFILE_NAME 0
@@ -29,6 +30,50 @@ constexpr uint8_t YLine4 = 169;
 constexpr uint8_t YLine5 = 197;
 constexpr uint8_t YLine6 = 225;
 
+static const char pm_pmTitle[] PROGMEM = "Select profile";
+static const char pm_pmReturn[] PROGMEM = "Return";
+static const char pm_pmReset[] PROGMEM = "Reset changes";
+static const char pm_pmSaveExit[] PROGMEM = "Save and exit";
+
+uint8_t MenuDrawItem(uint8_t x, uint8_t y, uint8_t nItem)
+{
+    if (nItem == 0)
+        return display::PrintString(x, y, pm_pmReturn);
+
+    if (nItem == 1)
+        return display::PrintString(x, y, pm_pmReset);
+
+    if (nItem == 2)
+        return display::PrintString(x, y, pm_pmSaveExit);
+
+    g_tempProfile.LoadFromEeprom(nItem - 3);
+    return display::PrintStringRam(x, y, g_tempProfile.m_name, g_tempProfile.m_nameLength);
+}
+
+uint8_t MenuGetItemWidth(uint8_t nItem)
+{
+    if (nItem == 0)
+        return display::GetTextWidth(pm_pmReturn);
+    
+    if (nItem == 1)
+        return display::GetTextWidth(pm_pmReset);
+
+    if (nItem == 2)
+        return display::GetTextWidth(pm_pmSaveExit);
+
+    g_tempProfile.LoadFromEeprom(nItem - 3);
+    return display::GetTextWidthRam(g_tempProfile.m_name, g_tempProfile.m_nameLength);    
+}
+
+static const display::Menu pm_editProfilesMenu PROGMEM =
+{
+    nullptr,
+    &MenuDrawItem,
+    &MenuGetItemWidth,
+    EEPROM_PROFILES_COUNT + 3,
+    pm_pmTitle
+};
+
 struct SBitOption
 {
     uint8_t m_y;
@@ -44,7 +89,7 @@ struct SBitOption
         
         uint8_t y = pgm_read_byte(&m_y);
         display::SetUiElementColors(cursorPosition, pgm_read_byte(&m_uiPosition));
-        if (g_helpProfile.m_options & pgm_read_byte(&m_value))
+        if (g_editorProfile.m_options & pgm_read_byte(&m_value))
         {
             display::PrintString(240 - 7 - yesWidth, y, pm_yes);
         }
@@ -102,7 +147,12 @@ void DrawBackgroundP2()
 {
     static const uint8_t pm_bgObjects[] PROGMEM =
     {
-        DRO_STR(XPage, YHeader, S, "2", 1),
+        DRO_FILLRECT | 1, 0, 0, 240, 30,
+        DRO_STR(26, YHeader, S, "Charger profile", 15),
+        DRO_STR(XPage, YHeader, S, "2/3", 3),
+
+        DRO_BGCOLOR(CLR_DARK_BLUE),
+        DRO_FILLRECT | 1, 0, 30, 240, 30,
 
         DRO_BGCOLOR(CLR_BLACK),
         DRO_FILLRECT | 1, 0, 60, 240, 180,
@@ -126,7 +176,12 @@ void DrawBackgroundP3()
 {
     static const uint8_t pm_bgObjects[] PROGMEM =
     {
-        DRO_STR(XPage, YHeader, S, "3", 1),
+        DRO_FILLRECT | 1, 0, 0, 240, 30,
+        DRO_STR(26, YHeader, S, "Charger profile", 15),
+        DRO_STR(XPage, YHeader, S, "3/3", 3),
+
+        DRO_BGCOLOR(CLR_DARK_BLUE),
+        DRO_FILLRECT | 1, 0, 30, 240, 30,
 
         DRO_BGCOLOR(CLR_BLACK),
         DRO_FILLRECT | 1, 0, 60, 240, 180,
@@ -140,6 +195,16 @@ void DrawBackgroundP3()
         DRO_END
     };
     display::DrawObjects(pm_bgObjects, CLR_RED_BEAUTIFUL, CLR_WHITE);
+}
+
+void DrawPageBackground(uint8_t nPage)
+{
+    if (!nPage)
+        DrawBackgroundP1();
+    else if (nPage == 1)
+        DrawBackgroundP2();
+    else
+        DrawBackgroundP3();
 }
 
 uint8_t GetPageNumber(int8_t cursorPosition)
@@ -160,14 +225,7 @@ void DrawElements(int8_t cursorPosition, uint8_t ticksElapsed)
     uint8_t pureCursorPosition = static_cast<uint8_t>(cursorPosition & 0x3F);
     uint8_t nPage = GetPageNumber(pureCursorPosition);
     if (nPage != GetPageNumber(g_previousCursorPosition))
-    {
-        if (!nPage)
-            DrawBackgroundP1();
-        else if (nPage == 1)
-            DrawBackgroundP2();
-        else
-            DrawBackgroundP3();
-    }
+        DrawPageBackground(nPage);
 
     g_previousCursorPosition = pureCursorPosition;
 
@@ -183,25 +241,25 @@ void DrawElements(int8_t cursorPosition, uint8_t ticksElapsed)
                 fgColor = CLR_BG_CURSOR;
         }
 
-        x += display::PrintGlyph(display::GetSans12(), x, YProfile, g_helpProfile.m_name[i], fgColor, bgColor);
+        x += display::PrintGlyph(display::GetSans12(), x, YProfile, g_editorProfile.m_name[i], fgColor, bgColor);
     }
     display::FillRect(x, YProfile - 21, 240 - x, 27, CLR_DARK_BLUE);
 
     if (!nPage)
     {
-        utils::VoltageToString(g_helpProfile.m_chargeVoltageX1000, cursorPosition != UI_VOLTAGE);
+        utils::VoltageToString(g_editorProfile.m_chargeVoltageX1000, cursorPosition != UI_VOLTAGE);
         display::DrawSettableDecimal(240 - 7 - 13*4 - 15 - 6, YLine1, 5,
             cursorPosition - UI_VOLTAGE, CLR_WHITE, CLR_BLACK);
 
-        utils::CurrentToString(g_helpProfile.m_chargeCurrentX1000);
+        utils::CurrentToString(g_editorProfile.m_chargeCurrentX1000);
         display::DrawSettableDecimal(240 - 7 - 13*3 - 16 - 6, YLine2, 4,
             cursorPosition - UI_CURRENT, CLR_WHITE, CLR_BLACK);
 
-        utils::VoltageToString(g_helpProfile.m_minBatteryVoltageX1000, cursorPosition != UI_MIN_VOLTAGE);
+        utils::VoltageToString(g_editorProfile.m_minBatteryVoltageX1000, cursorPosition != UI_MIN_VOLTAGE);
         display::DrawSettableDecimal(240 - 7 - 13*4 - 15 - 6, YLine4, 5,
             cursorPosition - UI_MIN_VOLTAGE, CLR_WHITE, CLR_BLACK);
 
-        utils::I8ToString(g_helpProfile.m_stopChargeCurrentPercent, g_buffer);
+        utils::I8ToString(g_editorProfile.m_stopChargeCurrentPercent, g_buffer);
         g_buffer[0] = (cursorPosition != UI_FINISH_CURRENT && g_buffer[1] == '0') ? 127 : g_buffer[1];
         g_buffer[1] = g_buffer[2];
         display::DrawSettableDecimal(240 - 7 - 13*2 - 21, YLine6, 2,
@@ -209,15 +267,15 @@ void DrawElements(int8_t cursorPosition, uint8_t ticksElapsed)
     }
     else if (nPage == 1)
     {
-        utils::VoltageToString(g_helpProfile.m_restartChargeVoltageX1000, cursorPosition != UI_RESTART_VOLTAGE);
+        utils::VoltageToString(g_editorProfile.m_restartChargeVoltageX1000, cursorPosition != UI_RESTART_VOLTAGE);
         display::DrawSettableDecimal(240 - 7 - 13*4 - 15 - 6, YLine2, 5,
             cursorPosition - UI_RESTART_VOLTAGE, CLR_WHITE, CLR_BLACK);
 
-        utils::VoltageToString(g_helpProfile.m_openVoltageX1000, cursorPosition != UI_OPEN_VOLTAGE);
+        utils::VoltageToString(g_editorProfile.m_openVoltageX1000, cursorPosition != UI_OPEN_VOLTAGE);
         display::DrawSettableDecimal(240 - 7 - 13*4 - 15 - 6, YLine4, 5,
             cursorPosition - UI_OPEN_VOLTAGE, CLR_WHITE, CLR_BLACK);
 
-        utils::I16ToString(g_helpProfile.m_openCurrentX1000, g_buffer, cursorPosition != UI_OPEN_CURRENT ? 3 : 2);
+        utils::I16ToString(g_editorProfile.m_openCurrentX1000, g_buffer, cursorPosition != UI_OPEN_CURRENT ? 3 : 2);
         g_buffer[0] = g_buffer[2];
         g_buffer[1] = g_buffer[3];
         g_buffer[2] = g_buffer[4];
@@ -233,21 +291,25 @@ void DrawElements(int8_t cursorPosition, uint8_t ticksElapsed)
 
 bool OnClick(int8_t cursorPosition)
 {
+    // Prevent editing name for the current profile (it's useless)
+    if (g_bCurrentProfile && cursorPosition < UI_VOLTAGE)
+        return false;
+
     if (cursorPosition == UI_OPT_CCC)
     {
-        g_helpProfile.m_options ^= COPT_CCC_MODE;
+        g_editorProfile.m_options ^= COPT_CCC_MODE;
         return false;
     }
 
     if (cursorPosition == UI_OPT_3RD_PIN)
     {
-        g_helpProfile.m_options ^= COPT_USE_3RD_PIN;
+        g_editorProfile.m_options ^= COPT_USE_3RD_PIN;
         return false;
     }
 
     if (cursorPosition == UI_OPT_RESTART)
     {
-        g_helpProfile.m_options ^= COPT_RESTART_CHARGE;
+        g_editorProfile.m_options ^= COPT_RESTART_CHARGE;
         return false;
     }
     
@@ -258,55 +320,56 @@ void OnChangeValue(int8_t cursorPosition, int8_t delta)
 {
     if (cursorPosition < UI_VOLTAGE)
     {
-        g_helpProfile.m_name[cursorPosition] = utils::ChangeI8ByDelta(g_helpProfile.m_name[cursorPosition], delta, 32, 126);
+        g_editorProfile.m_name[cursorPosition] =
+            utils::ChangeI8ByDelta(g_editorProfile.m_name[cursorPosition], delta, 32, 126);
         return;
     }
 
     if (cursorPosition < UI_VOLTAGE + 4)
     {
-        g_helpProfile.m_chargeVoltageX1000 = utils::ChangeI16ByDigit(g_helpProfile.m_chargeVoltageX1000,
+        g_editorProfile.m_chargeVoltageX1000 = utils::ChangeI16ByDigit(g_editorProfile.m_chargeVoltageX1000,
             UI_VOLTAGE + 4 - cursorPosition, delta, 1500, 23500);
         return;
     }
 
     if (cursorPosition < UI_CURRENT + 3)
     {
-        g_helpProfile.m_chargeCurrentX1000 = utils::ChangeI16ByDigit(g_helpProfile.m_chargeCurrentX1000,
+        g_editorProfile.m_chargeCurrentX1000 = utils::ChangeI16ByDigit(g_editorProfile.m_chargeCurrentX1000,
             UI_CURRENT + 3 - cursorPosition, delta, 100, MAX_CURRENT);
         return;
     }
 
     if (cursorPosition < UI_MIN_VOLTAGE + 4)
     {
-        g_helpProfile.m_minBatteryVoltageX1000 = utils::ChangeI16ByDigit(g_helpProfile.m_minBatteryVoltageX1000,
+        g_editorProfile.m_minBatteryVoltageX1000 = utils::ChangeI16ByDigit(g_editorProfile.m_minBatteryVoltageX1000,
             UI_MIN_VOLTAGE + 4 - cursorPosition, delta, 900, 23000);
         return;
     }
 
     if (cursorPosition < UI_FINISH_CURRENT + 2)
     {
-        g_helpProfile.m_stopChargeCurrentPercent = LOBYTE(utils::ChangeI16ByDigit(g_helpProfile.m_stopChargeCurrentPercent,
-            UI_FINISH_CURRENT + 1 - cursorPosition, delta, 0, 50));
+        g_editorProfile.m_stopChargeCurrentPercent = LOBYTE(utils::ChangeI16ByDigit(
+            g_editorProfile.m_stopChargeCurrentPercent, UI_FINISH_CURRENT + 1 - cursorPosition, delta, 0, 50));
         return;
     }
 
     if (cursorPosition < UI_RESTART_VOLTAGE + 4)
     {
-        g_helpProfile.m_restartChargeVoltageX1000 = utils::ChangeI16ByDigit(g_helpProfile.m_restartChargeVoltageX1000,
+        g_editorProfile.m_restartChargeVoltageX1000 = utils::ChangeI16ByDigit(g_editorProfile.m_restartChargeVoltageX1000,
             UI_RESTART_VOLTAGE + 4 - cursorPosition, delta, 1000, 23500);
         return;
     }
 
     if (cursorPosition < UI_OPEN_VOLTAGE + 4)
     {
-        g_helpProfile.m_openVoltageX1000 = utils::ChangeI16ByDigit(g_helpProfile.m_openCurrentX1000,
+        g_editorProfile.m_openVoltageX1000 = utils::ChangeI16ByDigit(g_editorProfile.m_openCurrentX1000,
             UI_OPEN_VOLTAGE + 4 - cursorPosition, delta, 1500, 24000);
         return;
     }
 
     if (cursorPosition < UI_OPEN_CURRENT + 3)
     {
-        g_helpProfile.m_openCurrentX1000 = utils::ChangeI16ByDigit(g_helpProfile.m_openCurrentX1000,
+        g_editorProfile.m_openCurrentX1000 = utils::ChangeI16ByDigit(g_editorProfile.m_openCurrentX1000,
             UI_OPEN_CURRENT + 2 - cursorPosition, delta, 10, 900);
         return;
     }
@@ -317,14 +380,34 @@ bool OnLongClick(int8_t cursorPosition)
     // No menu if we're editing the current profile
     if (g_bCurrentProfile)
     {
-        ::charger::g_profile = g_helpProfile;
+        ::charger::g_profile = g_editorProfile;
         return true;
     }
 
-    g_helpProfile.SaveToEeprom(g_settings.m_chargerProfileNumber);
-
     // Show profile selection menu
-    return true;
+    uint8_t result = pm_editProfilesMenu.Show();
+
+    // Reset changes
+    if (result == 1)
+    {
+        g_editorProfile.LoadFromEeprom(g_settings.m_chargerProfileNumber);
+    }
+    else if (result >= 2)
+    {
+        g_editorProfile.SaveToEeprom(g_settings.m_chargerProfileNumber);
+        
+        // Exit
+        if (result == 2)
+            return true;
+
+        // Load profile
+        result -= 3;
+        g_settings.m_chargerProfileNumber = result;
+        g_editorProfile.LoadFromEeprom(result);
+    }
+    
+    DrawPageBackground(GetPageNumber(cursorPosition));
+    return false;
 }
 
 static const display::UiScreen pm_profileScreen PROGMEM =
@@ -342,9 +425,9 @@ void Show(bool bCurrentProfile)
     g_previousCursorPosition = 0;
     g_bCurrentProfile = bCurrentProfile;
     if (bCurrentProfile)
-        g_helpProfile = ::charger::g_profile;
+        g_editorProfile = ::charger::g_profile;
     else
-        g_helpProfile.LoadFromEeprom(g_settings.m_chargerProfileNumber);
+        g_editorProfile.LoadFromEeprom(g_settings.m_chargerProfileNumber);
 
     pm_profileScreen.Show();
 }

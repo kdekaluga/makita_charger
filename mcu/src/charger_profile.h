@@ -96,7 +96,13 @@ private:
     static SProfile* GetProfileEepromAddr(uint8_t nProfile);
 };
 
+// Main charger profile
 var SProfile g_profile;
-var SProfile g_helpProfile;
+
+// Profile being edited
+var SProfile g_editorProfile;
+
+// Used for menu displaying (to load profile names)
+var SProfile g_tempProfile;
 
 } // namespace charger

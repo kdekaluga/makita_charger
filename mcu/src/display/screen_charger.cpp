@@ -4,7 +4,7 @@ namespace screen::charger {
 
 using ::charger::EState;
 using ::charger::g_profile;
-using ::charger::g_helpProfile;
+using ::charger::g_tempProfile;
 
 #define CHARGE_BAR_WIDTH 7
 
@@ -24,6 +24,7 @@ constexpr uint8_t ChargeOptionsYPos = 108;
 static const char pm_cmTitle[] PROGMEM = "Select profile";
 static const char pm_cmReturn[] PROGMEM = "Return";
 static const char pm_cmExit[] PROGMEM = "Exit Charger";
+static const char pm_cmEditParams[] PROGMEM = "Charge parameters";
 
 uint8_t CmDrawItem(uint8_t x, uint8_t y, uint8_t nItem)
 {
@@ -33,8 +34,11 @@ uint8_t CmDrawItem(uint8_t x, uint8_t y, uint8_t nItem)
     if (nItem == 1)
         return display::PrintString(x, y, pm_cmExit);
 
-    g_helpProfile.LoadFromEeprom(nItem - 2);
-    return display::PrintStringRam(x, y, g_helpProfile.m_name, g_helpProfile.m_nameLength);
+    if (nItem == 2)
+        return display::PrintString(x, y, pm_cmEditParams);
+
+    g_tempProfile.LoadFromEeprom(nItem - 3);
+    return display::PrintStringRam(x, y, g_tempProfile.m_name, g_tempProfile.m_nameLength);
 }
 
 uint8_t CmGetItemWidth(uint8_t nItem)
@@ -45,8 +49,11 @@ uint8_t CmGetItemWidth(uint8_t nItem)
     if (nItem == 1)
         return display::GetTextWidth(pm_cmExit);
 
-    g_helpProfile.LoadFromEeprom(nItem - 2);
-    return display::GetTextWidthRam(g_helpProfile.m_name, g_helpProfile.m_nameLength);    
+    if (nItem == 2)
+        return display::GetTextWidth(pm_cmEditParams);
+
+    g_tempProfile.LoadFromEeprom(nItem - 3);
+    return display::GetTextWidthRam(g_tempProfile.m_name, g_tempProfile.m_nameLength);    
 }
 
 static const display::Menu pm_chargerMenu PROGMEM =
@@ -54,7 +61,7 @@ static const display::Menu pm_chargerMenu PROGMEM =
     nullptr,
     &CmDrawItem,
     &CmGetItemWidth,
-    EEPROM_PROFILES_COUNT + 2,
+    EEPROM_PROFILES_COUNT + 3,
     pm_cmTitle
 };
 
@@ -215,9 +222,9 @@ EState StateMachine(EState state, uint16_t voltage, uint16_t current)
         return EState::MEASURING_VOLTAGE;
 
     case EState::INVALID_BATTERY:
-        // Wait until either the voltage drops by 100 mV or drops below 100 mV.
+        // Wait until either the voltage drops by 300 mV or drops below 200 mV.
         // This would mean that either we have a short circuit or the invalid battery has been removed.
-        if (voltage > 100 && g_previousBatteryVoltage - voltage < 100)
+        if (voltage > 200 && g_previousBatteryVoltage - voltage < 300)
             return EState::RESET_TICKS;
 
         // Wait 1000 ms more
@@ -625,7 +632,7 @@ bool OnLongClick(int8_t cursorPosition)
 
     // Switch off the output. This is very important since we could be in the
     // CCC mode (where the output voltage is huge and we must periodically switch it off)
-    // and the user may left the message box unattended forever.
+    // and the user may left the message box/menu unattended forever.
     g_outOn = false;
 
     // If we're charging, ask the user whether they want to continue
@@ -650,10 +657,16 @@ bool OnLongClick(int8_t cursorPosition)
     if (result == 1)
         return true;
 
-    // Switch profile
-    if (result)
+    // Edit charge params
+    if (result == 2)
     {
-        result -= 2;
+        screen::charger_profile::Show(true);
+    }
+
+    // Switch profile
+    else if (result >= 3)
+    {
+        result -= 3;
         g_settings.m_chargerProfileNumber = result;
         g_profile.LoadFromEeprom(result);
     }

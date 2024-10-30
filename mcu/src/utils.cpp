@@ -201,17 +201,21 @@ void TemperatureToString(int16_t x100Temp)
     g_buffer[5] = 0x80;
 }
 
+
 uint16_t GetBoardTempColor(uint16_t temperature)
 {
+    constexpr uint8_t redTemp = 80;
+    constexpr uint8_t yelTemp = redTemp - 16; // 64
+    constexpr uint8_t grnTemp = yelTemp - 16; // 48
     uint8_t t = HIBYTE(temperature);
-    if (t < 58)
+    if (t < grnTemp)
         return CLR_GREEN;
 
-    if (t < 74)
-        return RGB((t - 58) << 4, 255, 0);
+    if (t < yelTemp)
+        return RGB((t - grnTemp) << 4, 255, 0);
 
-    if (t < 90)
-        return RGB(255, (89 - t) << 4, 0);
+    if (t < redTemp)
+        return RGB(255, (redTemp - 1 - t) << 4, 0);
 
     return CLR_RED;
 }

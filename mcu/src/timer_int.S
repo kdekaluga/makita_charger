@@ -52,23 +52,38 @@ TIMER0_OVF_vect:
     lds     R18, (g_timerCounter)
     lds     R17, (g_pwmValue + 1)
 
-    ; We always start ADC conversions manually, thus they are completely alignled
-    ; with the PWM generation. This makes measurements more precise, but it was
-    ; found expretimentally that if we start a conversion near the point when the PWM
-    ; switch is turned off, we got some slight error (~20 ADC units). It happens around
-    ; ~6.8 V at the output and we can definitely live with it, but it was decided to
-    ; improve the measurement logic to avoid starting a conversion at the aforementioned
-    ; moment.
+    ; A little trick to improve measurements accuracy...
+    ;
+    ; In this device we always start ADC conversions manually, thus they are completely
+    ; alignled with the PWM generation. This makes measurements more precise and repeatable,
+    ; but it was found expretimentally that if we start a conversion near the point when the
+    ; PWM switch is turned off, we got some slight error (~20 ADC units) because of some
+    ; switching noise picked up by the input schematics. The ultimate solution would be to
+    ; adjust the schematics to protect it from such pulses, but unfortunately that's not
+    ; that easy.
+    ;
+    ; This interference is observed at the output voltage about 6.8 V, i.e. not in the
+    ; intended operating range, so we can definitely live with it. But after some experiments
+    ; it was decided to implement a software trick that allows to avoid making measurements
+    ; at the PWM swithing point.
+    ;
+    ; The idea is quite staightforward - since we set the PWM width, we know exactly when the
+    ; switch is turned on and off. Also we know from the code when we start an ADC conversion
+    ; and if we think these two events become too close to each other in time, we can shift
+    ; measurements to a slightly different time. Since the ADC is clocked by Fcpu/16, we
+    ; have to shift the conversion start by at least 16 CPU clocks otherwise we might not see
+    ; the result. We also cannot shift it too much because we must have 13*16 = 208 CPU clocks
+    ; before the result is read in the next interrupt cycle.
     ;
     ; So now we have two similar sections in the code - the standard one which starts
     ; a conversion after ~43 clocks from the interrupt start and the early measurement
     ; one which starts a conversion after ~26 clocks from the interrupt start. The time
-    ; difference between them is 17 CPU clocks or a little bit more than one ADC cycle.
+    ; difference between them is 17 CPU clocks or a little more than one ADC cycle.
     ;
-    ; Finally we check when the PWM switch is turned off by analyzing the OCR0A value
-    ; and choose one of the measurement logics to avoid measurement disturbance.
+    ; Finally we check the OCR0A value to understand when the PWM switch is being turned off
+    ; and select one of the measurement options based on that.
     ;
-    ; Experimentally found good range: 55 - 75
+    ; Good range for a check condition (found experimentally): 55 - 75
     cpi     R17, 65
     brcc    tm0_early_start
 
@@ -111,7 +126,7 @@ TIMER0_OVF_vect:
     rjmp    tm0_1
 
 
-; Eraly measurement version
+; Eraly measurement option
 tm0_early_start:
     ; 18c
     ; R17 = g_pwmValue + 1
