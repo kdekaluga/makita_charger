@@ -4,48 +4,12 @@
 
 namespace charger {
 
-enum class EState : uint8_t
-{
-    NO_BATTERY = 0,
-    INVALID_BATTERY,
-    INVALID_BATTERY2,
-    MEASURING_VOLTAGE,
-    CHARGING,
-    CHARGE_COMPLETE,
-
-    // Do nothing
-    DO_NOTHING = 0x0E,
-
-    // Don't change the current state, just reset the tick counter
-    RESET_TICKS = 0x0F,
-
-    STATE_MASK = 0x0F,
-
-    // Don't erase background to prevent flickering
-    DONT_ERASE_BACKGROUND = 0x80,
-};
-
-inline EState operator ~(EState op1)
-{
-    return static_cast<EState>(~static_cast<uint8_t>(op1));
-}
-
-inline EState operator &(EState op1, EState op2)
-{
-    return static_cast<EState>(static_cast<uint8_t>(op1) & static_cast<uint8_t>(op2));
-}
-
-inline EState operator |(EState op1, EState op2)
-{
-    return static_cast<EState>(static_cast<uint8_t>(op1) | static_cast<uint8_t>(op2));
-}
-
-// Charge profile options
+// *** Charge profile options ***
 
 // Whether to use Makita 3rd pin to detect battery issues
 #define COPT_USE_3RD_PIN 0x01
 
-// Whether to use continuos constant current mode
+// Whether to use continuos constant current (CCC) mode
 #define COPT_CCC_MODE 0x02
 
 // Whether to automatically restart charging when battery voltage drops

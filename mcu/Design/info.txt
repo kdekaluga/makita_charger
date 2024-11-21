@@ -1,2 +1,10 @@
 Font DPI = 140
 Free Sans
+
+Programming connector (D-SUB9):
+GND: 1, 5, 6, 9, Chassis
+MOSI: 2
+MISO: 4
+SCK: 7
+RESET: 8
++5V: 3 (not connected)

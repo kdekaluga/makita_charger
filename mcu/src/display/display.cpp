@@ -181,18 +181,8 @@ uint8_t MessageBox(const char* caption, const char* text, uint8_t flags)
     uint8_t currentWidth = 0;
     for (const char *p = text; const uint8_t c = pgm_read_byte(p); ++p)
     {
-        if (c == '\n')
-        {
-            if (currentWidth > textWidth)
-                textWidth = currentWidth;
-
-            ++nLines;
-            currentWidth = 0;
-            continue;
-        }
-
         uint8_t charWidth = GetCharWidth(c);
-        if (currentWidth + charWidth > maxTextWidth)
+        if (c == '\n' || currentWidth + charWidth > maxTextWidth)
         {
             if (currentWidth > textWidth)
                 textWidth = currentWidth;
@@ -600,10 +590,11 @@ uint8_t Menu::Show(uint8_t selectedItem) const
     uint8_t itemCount = GetItemCount();
     uint8_t pageCount = (itemCount + 6)/7;
 
-    const auto DrawItem = [&](uint8_t nItem, int x)
+    const auto DrawItem = [&](uint8_t nItem)
     {
         SetBgColor(nItem == selectedItem ? CLR_BG_CURSOR : CLR_BLACK);
 
+        uint8_t x = (240 - pageItemWidth)/2;
         uint8_t y = yFirst + (nItem - currentPageNumber*7)*27;
         /*
         utils::I8ToString(nItem + 1, g_buffer);
@@ -645,7 +636,6 @@ uint8_t Menu::Show(uint8_t selectedItem) const
         
         FillRect(0, 30, 240, 210, CLR_BLACK);
         pageItemWidth = CalcPageItemWidth();
-        uint8_t x = (240 - pageItemWidth)/2;
 
         for (uint8_t i = 0; i < 7; ++i)
         {
@@ -653,7 +643,7 @@ uint8_t Menu::Show(uint8_t selectedItem) const
             if (nItem >= itemCount)
                 break;
             
-            DrawItem(nItem, x);
+            DrawItem(nItem);
         }
     };
 
@@ -687,9 +677,8 @@ uint8_t Menu::Show(uint8_t selectedItem) const
             continue;
         }
 
-        uint8_t x = (240 - pageItemWidth)/2;
-        DrawItem(oldSelectedItem, x);
-        DrawItem(selectedItem, x);
+        DrawItem(oldSelectedItem);
+        DrawItem(selectedItem);
     }
 }
 

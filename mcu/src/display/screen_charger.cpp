@@ -2,7 +2,6 @@
 
 namespace screen::charger {
 
-using ::charger::EState;
 using ::charger::g_profile;
 using ::charger::g_tempProfile;
 

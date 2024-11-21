@@ -29,7 +29,7 @@ static const uint8_t pm_noteDecayVolume[] PROGMEM =
 };
 */
 
-// Volume table [0..15]
+// Volume table, converts volume value [0..15] to Timer1 PWM value
 static const uint8_t pm_volumeTable[] PROGMEM =
 {
     0, 1, 2, 3, 4, 5, 6, 8, 11, 15, 20, 26, 33, 41, 60, 100
@@ -37,6 +37,8 @@ static const uint8_t pm_volumeTable[] PROGMEM =
 
 void SetSoundParameters(uint16_t freqDivisor, uint8_t volume)
 {
+    volume = pgm_read_byte(&pm_volumeTable[volume]);
+
     OCR1AH = 0;
     OCR1AL = volume;
     if (!volume)
@@ -57,7 +59,7 @@ void ProcessKeyBeep()
     if (!g_keyBeepLengthLeft || !g_settings.m_keyBeepVolume)
         return;
 
-    SetSoundParameters(1000, --g_keyBeepLengthLeft ? pgm_read_byte(&pm_volumeTable[g_settings.m_keyBeepVolume]) : 0);
+    SetSoundParameters(1000, --g_keyBeepLengthLeft ? g_settings.m_keyBeepVolume : 0);
 }
 
 void MusicPlayer()
@@ -121,7 +123,6 @@ void PlayNote()
     if (!volume)
         volume = 1;
 
-    volume = pgm_read_byte(&pm_volumeTable[volume]);
     SetSoundParameters(noteDivisor, volume);
 }
 

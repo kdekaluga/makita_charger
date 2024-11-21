@@ -2,7 +2,7 @@
 
 // Melody data starts with a melody speed, then all the melody notes go.
 // Melody speed is an 8 bit number representing 100 Hz tick count between
-// the adjacent notes. It's value can be calculated as:
+// the adjacent notes. Its value can be calculated as:
 //
 // speed = 100*60/(4*<BPM>)
 //
@@ -17,7 +17,7 @@
 // 7 cycles correspondingly. If you need a note to be played longer, see below for the
 // note continuation command.
 //
-// If note length is zero, the note pitch part of the byte (5 LSBs) is treated as command.
+// If note length is zero, the note pitch part of the byte (5 LSBs) is treated as a command.
 // In this case bits 1:0 represent the command code and bits 4:2 represent the command length.
 //
 // Command 0 stops the playback. It's the last command in a melody.

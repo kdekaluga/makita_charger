@@ -523,7 +523,7 @@ encoder_not_changed:
     ;
     ; 1. Calculate Sum()/4M by loading higher bytes of Sum() and shifting them two times left.
     ; 2. Check if the Sum()/4M is greater than 250K. If it is, divide it by 10 and set the XXX.XX format flag.
-    ; 3. Multiply Sum by Ki and divide the result by 27466, these operations fits in 32 bit.
+    ; 3. Multiply Sum by Ki and divide the result by 27466, these operations fit in 32 bit.
     ; 4. If the result is greater than 65535, divide it by 10 and set the XXX.XX format flag.
     ; 5. Print the result in the XX.XXX or XXX.XX format using the standard 16-bit print routine.
     ; 6. ???

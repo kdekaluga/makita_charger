@@ -15,7 +15,12 @@
 #define ABS(n) ((n) < 0 ? -(n) : (n))
 
 #define MAX_VOLTAGE 24000
-#define MAX_CURRENT 6000
+#define MAX_CURRENT 8000
+
+#define DEFAULT_VOLTAGE_OFFSET 2
+#define DEFAULT_VOLTAGE_COEFF 24550
+#define DEFAULT_CURRENT_OFFSET 0
+#define DEFAULT_CURRENT_COEFF 12280
 
 #include <avr/pgmspace.h>
 #include <avr/eeprom.h>

@@ -4,7 +4,43 @@
 
 namespace screen::charger {
 
-var ::charger::EState g_state;
+enum class EState : uint8_t
+{
+    NO_BATTERY = 0,
+    INVALID_BATTERY,
+    INVALID_BATTERY2,
+    MEASURING_VOLTAGE,
+    CHARGING,
+    CHARGE_COMPLETE,
+
+    // Do nothing
+    DO_NOTHING = 0x0E,
+
+    // Don't change the current state, just reset the tick counter
+    RESET_TICKS = 0x0F,
+
+    STATE_MASK = 0x0F,
+
+    // Don't erase background to prevent flickering
+    DONT_ERASE_BACKGROUND = 0x80,
+};
+
+inline EState operator ~(EState op1)
+{
+    return static_cast<EState>(~static_cast<uint8_t>(op1));
+}
+
+inline EState operator &(EState op1, EState op2)
+{
+    return static_cast<EState>(static_cast<uint8_t>(op1) & static_cast<uint8_t>(op2));
+}
+
+inline EState operator |(EState op1, EState op2)
+{
+    return static_cast<EState>(static_cast<uint8_t>(op1) | static_cast<uint8_t>(op2));
+}
+
+var EState g_state;
 var uint16_t g_ticksInState;
 
 // Used internally by StateMachine()

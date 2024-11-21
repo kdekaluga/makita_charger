@@ -3,6 +3,7 @@
 #include "../data.h"
 #include <avr/pgmspace.h>
 
+// Colors
 #define RGB(r, g, b) ((((r) & 0xF8) << 8) | (((g) & 0xFC) << 3) | (((b) & 0xF8) >> 3))
 #define CLR_BLACK 0x0000
 #define CLR_RED RGB(255, 0, 0)
@@ -69,7 +70,7 @@ struct Font
     uint8_t m_lastChar;
     uint8_t m_firstChar;
   
-    // Y offset to the upper line which needs to be cleared for the font
+    // Y offset to the upper line which needs to be drawn for the font
     int8_t m_yFirstLineOffset;
 
     // Distance in pixels for the next text line
