@@ -4,8 +4,6 @@
 
 #include "../data.h"
 
-#define TWI_ADDR_TMP100BOARD 0b01001000
-
 namespace twi {
 
 void Init();

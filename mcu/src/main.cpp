@@ -135,11 +135,7 @@ void RequestTemperature()
     switch (g_tempRequesterState++)
     {
     case 0:
-        // Read temperature (result from the previous request), exchange bytes
-        *reinterpret_cast<uint8_t*>(&g_temperatureBoard) = *reinterpret_cast<uint8_t*>(twi::g_twiBuffer + 1);
-        *(reinterpret_cast<uint8_t*>(&g_temperatureBoard) + 1) = *reinterpret_cast<uint8_t*>(twi::g_twiBuffer);
-
-        // Set resolution to 12 bit
+        // Set board TMP100 resolution to 12 bit
         twi::g_twiBuffer[0] = 0x01;
         twi::g_twiBuffer[1] = 0x60;
         twi::SendBytes(TWI_ADDR_TMP100BOARD, twi::g_twiBuffer, 2);
@@ -156,6 +152,36 @@ void RequestTemperature()
         twi::g_twiBuffer[0] = 99;
         twi::g_twiBuffer[1] = 0xF0;
         twi::RecvBytes(TWI_ADDR_TMP100BOARD, twi::g_twiBuffer, 2);
+        break;
+
+    case 3:
+        // Read the board temperature and set battery TMP100 resolution to 12 bit
+        *reinterpret_cast<uint8_t*>(&g_temperatureBoard) = twi::g_twiBuffer[1];
+        *(reinterpret_cast<uint8_t*>(&g_temperatureBoard) + 1) = twi::g_twiBuffer[0];
+
+        twi::g_twiBuffer[0] = 0x01;
+        twi::g_twiBuffer[1] = 0x60;
+        twi::SendBytes(TWI_ADDR_TMP100BATTERY, twi::g_twiBuffer, 2);
+        break;
+
+    case 4:
+        // Select the temperature register
+        twi::g_twiBuffer[0] = 0x00;
+        twi::SendBytes(TWI_ADDR_TMP100BATTERY, twi::g_twiBuffer, 1);
+        break;
+
+    case 5:
+        // Request the temperature
+        twi::g_twiBuffer[0] = 99;
+        twi::g_twiBuffer[1] = 0xF0;
+        twi::RecvBytes(TWI_ADDR_TMP100BATTERY, twi::g_twiBuffer, 2);
+        break;
+
+    case 6:
+        // Read the battery temperature
+        *reinterpret_cast<uint8_t*>(&g_temperatureBattery) = twi::g_twiBuffer[1];
+        *(reinterpret_cast<uint8_t*>(&g_temperatureBattery) + 1) = twi::g_twiBuffer[0];
+        // Fallthrough
 
     default:
         g_tempRequesterState = 0;

@@ -101,8 +101,9 @@ var volatile uint8_t g_failureState;
 // State of the temperature sensor request routine
 var uint8_t g_tempRequesterState;
 
-// Board temprerature
+// Board and battery temprerature
 var uint16_t g_temperatureBoard;
+var uint16_t g_temperatureBattery;
 
 // ***
 

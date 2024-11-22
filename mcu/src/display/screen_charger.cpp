@@ -407,6 +407,14 @@ void DrawBattery (int8_t chargeBarPos)
     display::SetSans12();
     utils::PercentToString(g_batteryChargePercent);
     display::PrintStringRam(102, 106, g_buffer, 4);
+
+    cli();
+    uint16_t tempBattery = g_temperatureBattery;
+    sei();
+
+    display::SetColor(utils::GetBatteryTempColor(tempBattery));
+    utils::TemperatureToString(utils::TemperatureToDisplayX100(tempBattery));
+    display::PrintStringRam(174, 106, g_buffer + 1, 5);
 };
 
 void DrawElements(int8_t cursorPosition, uint8_t ticksElapsed)
