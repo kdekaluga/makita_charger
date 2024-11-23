@@ -56,6 +56,8 @@ void ClearPendingKeys();
 // Assembler routines
 extern "C" {
 
+void InitWatchdog();
+
 // Shifts supplied operand right by 12 bits (unfortunately GCC implements this as 12x4 shift
 // commands in a loop, so we have to implement it in assembler)
 uint16_t ShiftRight12(uint32_t value);

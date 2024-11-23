@@ -1,8 +1,21 @@
 #include "assembler_defines.S"
 
+.global InitWatchdog
 .global ShiftRight12, ShiftLeft12, I16ToString, I8ToString
 .global GetCurrentSumDiv4M, GetEncoderDelta, GetEncoderKey
 .global TemperatureToDisplayX100
+
+// void InitWatchdog();
+InitWatchdog:
+    wdr
+    ldi     R24, BV(WDCE) | BV(WDE)
+    sts     (WDTCSR), R24
+    
+    // 0.125 seconds interval
+    ldi     R24, BV(WDE) | BV(WDP1) | BV(WDP0)
+    sts     (WDTCSR), R24
+    
+    ret
 
 ; uint16_t ShiftRight12(uint32_t value)
 ShiftRight12:

@@ -31,6 +31,8 @@ void DoSoftReset()
 
 void InitMcu()
 {
+    utils::InitWatchdog();
+
     // *** ADC ***
     // Set ADC clock to 1 MHz, thus a single conversion will take 208 CPU clocks
     DIDR0 = BV(ADC0D) | BV(ADC1D);

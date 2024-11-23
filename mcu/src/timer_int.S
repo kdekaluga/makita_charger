@@ -12,8 +12,10 @@ tm0_process_current:
     sts     (ADCSRA), R19
 
     ; Check for a short circuit
-    ; Here we consider ~9 A and above (0x300 at ADC) as short circuit
-    cpi     R17, 3
+    ; Here we consider ~11 A and above as short circuit
+    cpi     R17, 0x03
+    brcs    tm0_no_short_circuit
+    cpi     R16, 0xC0
     brcs    tm0_no_short_circuit
 
     ; Short circuit detected! Reset the PWM and PID integral values
@@ -576,6 +578,9 @@ tm0_notResetAverager:
     subi    R16, lo8(-8)
     sbci    R17, hi8(-8)
     brmi    not_100Hz_timer
+
+    ; Reset watchdog here, 100 times per second
+    wdr
     
     subi    R16, lo8(625)
     sbci    R17, hi8(625)
