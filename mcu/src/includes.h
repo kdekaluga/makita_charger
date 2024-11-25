@@ -20,6 +20,9 @@
 #define TWI_ADDR_TMP100BOARD 0b01001000
 #define TWI_ADDR_TMP100BATTERY 0b01001010
 
+#define TEMP_BOARD_SYMBOL 'C'
+#define TEMP_BATTERY_SYMBOL 'B'
+
 #define DEFAULT_VOLTAGE_OFFSET static_cast<int8_t>(253)
 #define DEFAULT_VOLTAGE_COEFF 24580
 #define DEFAULT_CURRENT_OFFSET 0
@@ -46,4 +49,5 @@
 void CheckForFailures();
 void ProcessEncoderButton();
 void RequestTemperature();
+void ProcessFanSpeed();
 extern "C" void Timer100Hz();

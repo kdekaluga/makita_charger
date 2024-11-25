@@ -143,11 +143,21 @@ struct SSettings
     // Voltage and current settings for the power supply mode
     SPsProfile m_psSettings;
 
+    // Fan settings
+    // Minimum and maximum allowed fan PWM values (OCR0B values)
+    uint8_t m_fanPwmMin;
+    uint8_t m_fanPwmMax;
+    
+    // Fan start, maximum and stop temperatures
+    int8_t m_fanTempMin;
+    int8_t m_fanTempMax;
+    int8_t m_fanTempStop;
+
     // Additional power supply profiles (10 pcs)
     SPsProfile m_psProfiles[10];
 
     // Magic number
-    static constexpr uint16_t MagicNumber = 0x9881; // CRC16 of "SSettings_v1"
+    static constexpr uint16_t MagicNumber = 0x1235;
     uint16_t m_magicNumber;
 
     // Measurement conversion routines

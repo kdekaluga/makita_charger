@@ -199,7 +199,6 @@ void DrawMeasurements(int8_t cursorPosition)
     cli();
     uint16_t voltage = g_adcVoltageAverage;
     uint16_t current = g_adcCurrentAverage;
-    int16_t tempBoard = g_temperatureBoard;
     sei();
 
     display::SetSans18();
@@ -234,10 +233,25 @@ void DrawMeasurements(int8_t cursorPosition)
     display::PrintStringRam(141, yCapacity, g_buffer, 8);
 
     // Temperature
+    cli();
+    int16_t tempBoard = g_temperatureBoard;
+    int16_t tempBattery = g_temperatureBattery;
+    sei();
+
     display::SetColors(CLR_BLACK, utils::GetBoardTempColor(tempBoard));
     utils::TemperatureToString(utils::TemperatureToDisplayX100(tempBoard));
-    g_buffer[0] = 'B';
+    g_buffer[0] = TEMP_BOARD_SYMBOL;
     display::PrintStringRam(8, yCapacity + 27, g_buffer, 6);
+
+    display::SetColor(utils::GetBatteryTempColor(tempBattery));
+    utils::TemperatureToString(utils::TemperatureToDisplayX100(tempBattery));
+    g_buffer[0] = TEMP_BATTERY_SYMBOL;
+    display::PrintStringRam(93, yCapacity + 27, g_buffer, 6);
+
+    // Fan speed
+    display::SetColor(CLR_WHITE);
+    utils::FanSpeedToString();
+    display::PrintStringRam(174, yCapacity + 27, g_buffer, 4);
 }
 
 void DrawSettables(int8_t cursorPosition)

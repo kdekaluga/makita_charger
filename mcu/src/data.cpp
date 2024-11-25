@@ -85,6 +85,11 @@ void SSettings::ResetToDefault()
         .m_badBatteryMusic = 7,
         .m_chargerProfileNumber = 0,
         .m_psSettings = {12000, 1000},
+        .m_fanPwmMin = 7,
+        .m_fanPwmMax = 70,
+        .m_fanTempMin = 45,
+        .m_fanTempMax = 60,
+        .m_fanTempStop = 40,
         .m_psProfiles =
         {
             { 5000, 6000},

@@ -256,6 +256,12 @@ void I8ToStringSpaces(uint8_t value)
     }
 }
 
+void FanSpeedToString()
+{
+    uint16_t value = static_cast<uint16_t>(OCR0B)*100/g_settings.m_fanPwmMax;
+    PercentToString(static_cast<uint8_t>(value));
+}
+
 void I8SToString(int8_t value)
 {
     if (value >= 0)
@@ -298,7 +304,7 @@ uint16_t ChangeI16ByDigit(uint16_t value, uint8_t digit, int8_t delta, uint16_t 
     return value < minValue ? minValue : value;
 }
 
-uint8_t ChangeI8ByDelta(uint8_t value, int8_t delta, int8_t minValue, int8_t maxValue)
+uint8_t ChangeI8ByDelta(uint8_t value, int8_t delta, uint8_t minValue, uint8_t maxValue)
 {
     if (delta > 0)
     {

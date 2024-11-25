@@ -15,7 +15,7 @@ tm0_process_current:
     ; Here we consider ~11 A and above as short circuit
     cpi     R17, 0x03
     brcs    tm0_no_short_circuit
-    cpi     R16, 0xC0
+    cpi     R16, 0xE0
     brcs    tm0_no_short_circuit
 
     ; Short circuit detected! Reset the PWM and PID integral values
@@ -581,7 +581,7 @@ tm0_notResetAverager:
 
     ; Reset watchdog here, 100 times per second
     wdr
-    
+
     subi    R16, lo8(625)
     sbci    R17, hi8(625)
     sts     (g_timer625DividerCounter + 0), R16

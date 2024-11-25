@@ -2,34 +2,145 @@
 
 namespace screen::settings {
 
-#define UI_ELEMENT_COUNT 7
+#define UI_ELEMENT_COUNT 12
 
+// Page 1
 #define UI_BEEP_LENGTH 0
 #define UI_BEEP_VOLUME 1
 #define UI_SOUND_VOLUME 2
 #define UI_START_SOUND 3
 #define UI_FINISH_SOUND 4
+
+// Page 2
 #define UI_INTERRUPT_SOUND 5
 #define UI_BAD_BATTERY_SOUND 6
 
-int8_t DrawBackground()
+// Page 3
+#define UI_FAN_PWM_MIN 7
+#define UI_FAN_PWM_MAX 8
+#define UI_FAN_TEMP_STOP 9
+#define UI_FAN_TEMP_START 10
+#define UI_FAN_TEMP_MAX 11
+
+constexpr uint8_t YHeader = 23;
+constexpr uint8_t YLine1 = 56;
+constexpr uint8_t YLine2 = 84;
+constexpr uint8_t YLine3 = 112;
+constexpr uint8_t YLine4 = 140;
+constexpr uint8_t YLine5 = 168;
+constexpr uint8_t YLine6 = 196;
+constexpr uint8_t YLine7 = 224;
+
+// ***
+
+struct SValue
+{
+    enum EType: uint8_t
+    {
+        U8_2D,
+        U8_3D,
+        SOUND,
+    };
+
+    EType m_type;
+    uint8_t m_y;
+    uint8_t m_uiPosition;
+    void* m_address;
+    uint8_t m_min;
+    uint8_t m_max;
+
+    static constexpr uint8_t X2Digits = 240 - 7 - 13*2;
+    static constexpr uint8_t X3Digits = 240 - 7 - 13*3;
+
+    void Draw(int8_t cursorPosition) const
+    {
+        display::SetUiElementColors(cursorPosition, pgm_read_byte(&m_uiPosition));
+
+        EType type = static_cast<EType>(pgm_read_byte(&m_type));
+        uint8_t value = *reinterpret_cast<uint8_t*>(pgm_read_word(&m_address));
+        uint8_t y = pgm_read_byte(&m_y);
+
+        if (type == SOUND)
+        {
+            const char* text = reinterpret_cast<const char*>(pgm_read_word(&sound::pm_melodies[value].m_name));
+            uint8_t width = display::GetTextWidth(text);
+            display::FillRect(7, y - 21, 240 - 14 - width, 27, display::g_bgColor);
+            display::PrintString(240 - 7 - width, y, text);
+            return;
+        }
+
+        utils::I8ToStringSpaces(value);
+        if (type == U8_2D)
+            display::PrintStringRam(X2Digits, y, g_buffer + 1, 2);
+        else
+            display::PrintStringRam(X3Digits, y, g_buffer, 3);
+    }
+
+    bool Change(int8_t cursorPosition, int8_t delta) const
+    {
+        if (pgm_read_byte(&m_uiPosition) != cursorPosition)
+            return false;
+
+        EType type = static_cast<EType>(pgm_read_byte(&m_type));
+        uint8_t* pValue = reinterpret_cast<uint8_t*>(pgm_read_word(&m_address));
+
+        if (type == SOUND)
+        {
+            uint8_t newValue = utils::ChangeI8ByDelta(*pValue, delta, 0, MELODIES_COUNT - 1);
+            sound::PlayMusic(newValue);
+            *pValue = newValue;
+
+            return true;
+        }
+        
+        *pValue = utils::ChangeI8ByDelta(*pValue, delta, pgm_read_byte(&m_min), pgm_read_byte(&m_max));
+
+        return true;
+    }
+};
+
+// ***
+
+static const SValue pm_values[] PROGMEM =
+{
+    // Page 1, 5 values [0, 5)
+    {SValue::U8_2D, YLine1, UI_BEEP_LENGTH, &g_settings.m_keyBeepLength, 0, 30},
+    {SValue::U8_2D, YLine2, UI_BEEP_VOLUME, &g_settings.m_keyBeepVolume, 0, 15},
+    {SValue::U8_2D, YLine3, UI_SOUND_VOLUME, &g_settings.m_musicVolume, 0, 15},
+    {SValue::SOUND, YLine5, UI_START_SOUND, &g_settings.m_chargeStartMusic},
+    {SValue::SOUND, YLine7, UI_FINISH_SOUND, &g_settings.m_chargeEndMusic},
+
+    // Page 2, 2 values [5, 7)
+    {SValue::SOUND, YLine2, UI_INTERRUPT_SOUND, &g_settings.m_chargeInterruptedMusic},
+    {SValue::SOUND, YLine4, UI_BAD_BATTERY_SOUND, &g_settings.m_badBatteryMusic},
+
+    // Page 3, 5 values [7, 12)
+    {SValue::U8_2D, YLine2, UI_FAN_PWM_MIN, &g_settings.m_fanPwmMin, 3, 64},
+    {SValue::U8_3D, YLine3, UI_FAN_PWM_MAX, &g_settings.m_fanPwmMax, 10, 128},
+    {SValue::U8_2D, YLine5, UI_FAN_TEMP_STOP, &g_settings.m_fanTempStop, 25, 60},
+    {SValue::U8_2D, YLine6, UI_FAN_TEMP_START, &g_settings.m_fanTempMin, 30, 60},
+    {SValue::U8_2D, YLine7, UI_FAN_TEMP_MAX, &g_settings.m_fanTempMax, 45, 90},
+};
+
+// ***
+
+int8_t DrawBackgroundPage1()
 {
     static const uint8_t pm_bgObjects[] PROGMEM =
     {
         DRO_FILLRECT | 1, 0, 0, 240, 30,
-        DRO_STR(77, 23, S, "Settings", 8),
-        DRO_STR(240 - 7 - 13*2 - 7, 23, S, "1/2", 3),
+        DRO_STR(77, YHeader, S, "Settings", 8),
+        DRO_STR(240 - 7 - 13*2 - 7, YHeader, S, "1/3", 3),
 
         DRO_BGCOLOR(CLR_BLACK),
         DRO_FILLRECT | 1, 0, 30, 240, 210,
 
         DRO_FGCOLOR(CLR_GRAY),
-        DRO_STR(7, 56, S, "Key beep length", 15),
-        DRO_STR(7, 84, S, "Key beep volume", 15),
-        DRO_STR(7, 112, S, "Sound volume", 12),
-        DRO_STR(7, 140, S, "Charge start sound", 18),
-        DRO_STR(7, 196, S, "Charge finish sound", 19),
-
+        DRO_STR(7, YLine1, S, "Key beep length:", 16),
+        DRO_STR(7, YLine2, S, "Key beep volume:", 16),
+        DRO_STR(7, YLine3, S, "Sound volume:", 13),
+        DRO_STR(7, YLine4, S, "Charge start sound:", 19),
+        DRO_STR(7, YLine6, S, "Charge finish sound:", 20),
         DRO_END
     };
     display::DrawObjects(pm_bgObjects, CLR_RED_BEAUTIFUL, CLR_WHITE);
@@ -37,18 +148,40 @@ int8_t DrawBackground()
     return 0;
 }
 
-void DrawBackgroundPage1()
+void DrawBackgroundPage2()
 {
     static const uint8_t pm_bgObjects[] PROGMEM =
     {
-        DRO_STR(240 - 7 - 13*2 - 7, 23, S, "2/2", 3),
+        DRO_STR(240 - 7 - 13*2 - 7, YHeader, S, "2/3", 3),
 
         DRO_BGCOLOR(CLR_BLACK),
         DRO_FILLRECT | 1, 0, 30, 240, 210,
 
         DRO_FGCOLOR(CLR_GRAY),
-        DRO_STR(7, 56, S, "Charge break sound", 18),
-        DRO_STR(7, 112, S, "Bad battery sound", 17),
+        DRO_STR(7, YLine1, S, "Charge break sound:", 19),
+        DRO_STR(7, YLine3, S, "Bad battery sound:", 18),
+        DRO_END
+    };
+    display::DrawObjects(pm_bgObjects, CLR_RED_BEAUTIFUL, CLR_WHITE);
+}
+
+void DrawBackgroundPage3()
+{
+    static const uint8_t pm_bgObjects[] PROGMEM =
+    {
+        DRO_STR(240 - 7 - 13*2 - 7, YHeader, S, "3/3", 3),
+
+        DRO_BGCOLOR(CLR_BLACK),
+        DRO_FILLRECT | 1, 0, 30, 240, 210,
+
+        DRO_FGCOLOR(CLR_GRAY),
+        DRO_STR(7, YLine1, S, "Fan PWM settings", 16),
+        DRO_STR(28, YLine2, S, "minimum:", 8),
+        DRO_STR(28, YLine3, S, "maximum:", 8),
+        DRO_STR(7, YLine4, S, "Fan temperatures", 16),
+        DRO_STR(28, YLine5, S, "stop:", 5),
+        DRO_STR(28, YLine6, S, "start:", 6),
+        DRO_STR(28, YLine7, S, "maximum:", 8),
         DRO_END
     };
     display::DrawObjects(pm_bgObjects, CLR_RED_BEAUTIFUL, CLR_WHITE);
@@ -59,7 +192,10 @@ uint8_t GetPageNumber(int8_t cursorPosition)
     if (cursorPosition <= UI_FINISH_SOUND)
         return 0;
 
-    return 1;
+    if (cursorPosition <= UI_BAD_BATTERY_SOUND)
+        return 1;
+
+    return 2;
 }
 
 void DrawElements(int8_t cursorPosition, uint8_t ticksElapsed)
@@ -75,44 +211,30 @@ void DrawElements(int8_t cursorPosition, uint8_t ticksElapsed)
         if (nPage != GetPageNumber(g_previousCursorPosition))
         {
             if (!nPage)
-                DrawBackground();
-            else
                 DrawBackgroundPage1();
+            else if (nPage == 1)
+                DrawBackgroundPage2();
+            else
+                DrawBackgroundPage3();
         }
 
         g_previousCursorPosition = pureCursorPosition;
     }
 
-    const auto DrawSoundName = [&](uint8_t uiElement, uint8_t y, uint8_t sound)
-    {
-        display::SetUiElementColors(cursorPosition, uiElement);
-        const char* text = reinterpret_cast<const char*>(pgm_read_word(&sound::pm_melodies[sound].m_name));
-        uint8_t width = display::GetTextWidth(text);
-        display::FillRect(7, y - 21, 240 - 14 - width, 27, display::g_bgColor);
-        display::PrintString(240 - 7 - width, y, text);
-    };
-
     if (!nPage)
     {
-        display::SetUiElementColors(cursorPosition, UI_BEEP_LENGTH);
-        utils::I8ToStringSpaces(g_settings.m_keyBeepLength);
-        display::PrintStringRam(240 - 7 - 13*2, 56, g_buffer + 1, 2);
-
-        display::SetUiElementColors(cursorPosition, UI_BEEP_VOLUME);
-        utils::I8ToStringSpaces(g_settings.m_keyBeepVolume);
-        display::PrintStringRam(240 - 7 - 13*2, 84, g_buffer + 1, 2);
-
-        display::SetUiElementColors(cursorPosition, UI_SOUND_VOLUME);
-        utils::I8ToStringSpaces(g_settings.m_musicVolume);
-        display::PrintStringRam(240 - 7 - 13*2, 112, g_buffer + 1, 2);
-
-        DrawSoundName(UI_START_SOUND, 168, g_settings.m_chargeStartMusic);
-        DrawSoundName(UI_FINISH_SOUND, 224, g_settings.m_chargeEndMusic);
+        for (uint8_t i = 0; i < 5; ++i)
+            pm_values[i].Draw(cursorPosition);
+    }
+    else if (nPage == 1)
+    {
+        for (uint8_t i = 5; i < 7; ++i)
+            pm_values[i].Draw(cursorPosition);
     }
     else
     {
-        DrawSoundName(UI_INTERRUPT_SOUND, 84, g_settings.m_chargeInterruptedMusic);
-        DrawSoundName(UI_BAD_BATTERY_SOUND, 140, g_settings.m_badBatteryMusic);
+        for (uint8_t i = 7; i < 12; ++i)
+            pm_values[i].Draw(cursorPosition);
     }
 }
 
@@ -123,41 +245,10 @@ bool OnClick(int8_t cursorPosition)
 
 void OnChangeValue(int8_t cursorPosition, int8_t delta)
 {
-    const auto ChangeSound = [&](uint8_t& sound)
+    for (const SValue& value: pm_values)
     {
-        sound = utils::ChangeI8ByDelta(sound, delta, 0, MELODIES_COUNT - 1);
-        sound::PlayMusic(sound);
-    };
-
-    switch ((cursorPosition))
-    {
-    case UI_BEEP_LENGTH:
-        g_settings.m_keyBeepLength = utils::ChangeI8ByDelta(g_settings.m_keyBeepLength, delta, 0, 30);
-        break;
-    
-    case UI_BEEP_VOLUME:
-        g_settings.m_keyBeepVolume = utils::ChangeI8ByDelta(g_settings.m_keyBeepVolume, delta, 0, 15);
-        break;
-
-    case UI_SOUND_VOLUME:
-        g_settings.m_musicVolume = utils::ChangeI8ByDelta(g_settings.m_musicVolume, delta, 0, 15);
-        break;
-
-    case UI_START_SOUND:
-        ChangeSound(g_settings.m_chargeStartMusic);
-        break;
-
-    case UI_FINISH_SOUND:
-        ChangeSound(g_settings.m_chargeEndMusic);
-        break;
-
-    case UI_INTERRUPT_SOUND:
-        ChangeSound(g_settings.m_chargeInterruptedMusic);
-        break;
-
-    case UI_BAD_BATTERY_SOUND:
-        ChangeSound(g_settings.m_badBatteryMusic);
-        break;
+        if (value.Change(cursorPosition, delta))
+            return;
     }
 }
 
@@ -169,7 +260,7 @@ bool OnLongClick(int8_t cursorPosition)
 static const display::UiScreen pm_settingsScreen PROGMEM =
 {
     UI_ELEMENT_COUNT,
-    &DrawBackground,
+    &DrawBackgroundPage1,
     &DrawElements,
     &OnClick,
     &OnChangeValue,

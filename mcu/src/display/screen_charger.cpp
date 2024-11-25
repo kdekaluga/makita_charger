@@ -534,7 +534,7 @@ void DrawElements(int8_t cursorPosition, uint8_t ticksElapsed)
     display::SetSans12();
     display::SetColor(utils::GetBoardTempColor(tempBoard));
     utils::TemperatureToString(utils::TemperatureToDisplayX100(tempBoard));
-    g_buffer[0] = 'B';
+    g_buffer[0] = TEMP_BOARD_SYMBOL;
     display::PrintStringRam(10, 203, g_buffer, 6);
 
     // Time

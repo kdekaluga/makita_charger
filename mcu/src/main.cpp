@@ -127,6 +127,56 @@ void ProcessEncoderButton()
     }
 }
 
+void ProcessFanSpeed()
+{
+    constexpr uint8_t DONT_CHANGE = 1;
+    uint8_t pwmMin = g_settings.m_fanPwmMin;
+    uint8_t pwmMax = g_settings.m_fanPwmMax;
+
+    const auto GetTempPwm = [&]() -> uint8_t
+    {
+        int8_t temperature = static_cast<int8_t>(g_temperatureBoard >> 8);
+        if (temperature < g_settings.m_fanTempStop)
+            return 0;
+
+        int8_t fanTempMin = g_settings.m_fanTempMin;
+        if (temperature < fanTempMin)
+            return DONT_CHANGE;
+
+        if (temperature >= g_settings.m_fanTempMax)
+            return pwmMax;
+
+        // FanPwm = (FanMax - FanMin)*(t - tmin)/(tmax - tmin) + FanMin
+        uint16_t value = static_cast<uint16_t>(pwmMax - pwmMin);
+        value *= static_cast<uint16_t>((g_temperatureBoard >> 5) - (fanTempMin << 3));
+        value >>= 3;
+        return static_cast<uint8_t>(value/(g_settings.m_fanTempMax - fanTempMin)) + pwmMin;
+    };
+
+    const auto GetCurrentPwm = [&]() -> uint8_t
+    {
+        cli();
+        uint16_t current = g_adcCurrentAverage;
+        sei();
+
+        if (current < 0x0600)
+            return 0;
+
+        if (current < 0x0700)
+            return DONT_CHANGE;
+
+        return pwmMin;
+    };
+
+    uint8_t pwmTemp = GetTempPwm();
+    uint8_t pwmCurrent = GetCurrentPwm();
+    if (pwmCurrent > pwmTemp)
+        pwmTemp = pwmCurrent;
+
+    if (pwmTemp != DONT_CHANGE)
+        OCR0B = pwmTemp;
+}
+
 void RequestTemperature()
 {
     if (twi::IsBusy())
@@ -181,6 +231,10 @@ void RequestTemperature()
         // Read the battery temperature
         *reinterpret_cast<uint8_t*>(&g_temperatureBattery) = twi::g_twiBuffer[1];
         *(reinterpret_cast<uint8_t*>(&g_temperatureBattery) + 1) = twi::g_twiBuffer[0];
+        break;
+
+    case 7:
+        ProcessFanSpeed();
         // Fallthrough
 
     default:
@@ -263,6 +317,7 @@ int main()
     uint8_t mode = 0;
     for (;;)
     {
+        mode = pm_mainMenu.Show(mode);
         switch (mode)
         {
         case 0:
@@ -293,7 +348,5 @@ int main()
             display::MessageBox(pm_aboutTitle, pm_about, MB_OK | MB_INFO);
             break;
         }
-
-        mode = pm_mainMenu.Show(mode);
     }    
 }

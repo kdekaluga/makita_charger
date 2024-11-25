@@ -45,11 +45,14 @@ void PercentToString(uint8_t percent);
 // Converts unsigned 8-bit integer to string with leading spaces
 void I8ToStringSpaces(uint8_t value);
 
+// Converts current fan speed percent value to string
+void FanSpeedToString();
+
 // Converts signed 8-bit value to string
 void I8SToString(int8_t value);
 
 uint16_t ChangeI16ByDigit(uint16_t value, uint8_t digit, int8_t delta, uint16_t minValue, uint16_t maxValue);
-uint8_t ChangeI8ByDelta(uint8_t value, int8_t delta, int8_t minValue, int8_t maxValue);
+uint8_t ChangeI8ByDelta(uint8_t value, int8_t delta, uint8_t minValue, uint8_t maxValue);
 
 void ClearPendingKeys();
 
