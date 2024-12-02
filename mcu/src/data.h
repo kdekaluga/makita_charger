@@ -153,6 +153,11 @@ struct SSettings
     int8_t m_fanTempMax;
     int8_t m_fanTempStop;
 
+    // Fan start, max and stop wattage (in 1.18W units)
+    uint8_t m_fanPowMin;
+    uint8_t m_fanPowMax;
+    uint8_t m_fanPowStop;
+
     // Additional power supply profiles (10 pcs)
     SPsProfile m_psProfiles[10];
 
@@ -171,6 +176,8 @@ struct SSettings
     void SaveToEeprom();
     void ResetToDefault();
     bool AreSettingsChanged();
+
+    void SetFanSpeed();
 
 private:
     static SSettings* GetEepromSettingsAddr();

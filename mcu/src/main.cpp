@@ -127,56 +127,6 @@ void ProcessEncoderButton()
     }
 }
 
-void ProcessFanSpeed()
-{
-    constexpr uint8_t DONT_CHANGE = 1;
-    uint8_t pwmMin = g_settings.m_fanPwmMin;
-    uint8_t pwmMax = g_settings.m_fanPwmMax;
-
-    const auto GetTempPwm = [&]() -> uint8_t
-    {
-        int8_t temperature = static_cast<int8_t>(g_temperatureBoard >> 8);
-        if (temperature < g_settings.m_fanTempStop)
-            return 0;
-
-        int8_t fanTempMin = g_settings.m_fanTempMin;
-        if (temperature < fanTempMin)
-            return DONT_CHANGE;
-
-        if (temperature >= g_settings.m_fanTempMax)
-            return pwmMax;
-
-        // FanPwm = (FanMax - FanMin)*(t - tmin)/(tmax - tmin) + FanMin
-        uint16_t value = static_cast<uint16_t>(pwmMax - pwmMin);
-        value *= static_cast<uint16_t>((g_temperatureBoard >> 5) - (fanTempMin << 3));
-        value >>= 3;
-        return static_cast<uint8_t>(value/(g_settings.m_fanTempMax - fanTempMin)) + pwmMin;
-    };
-
-    const auto GetCurrentPwm = [&]() -> uint8_t
-    {
-        cli();
-        uint16_t current = g_adcCurrentAverage;
-        sei();
-
-        if (current < 0x0600)
-            return 0;
-
-        if (current < 0x0700)
-            return DONT_CHANGE;
-
-        return pwmMin;
-    };
-
-    uint8_t pwmTemp = GetTempPwm();
-    uint8_t pwmCurrent = GetCurrentPwm();
-    if (pwmCurrent > pwmTemp)
-        pwmTemp = pwmCurrent;
-
-    if (pwmTemp != DONT_CHANGE)
-        OCR0B = pwmTemp;
-}
-
 void RequestTemperature()
 {
     if (twi::IsBusy())
@@ -234,7 +184,7 @@ void RequestTemperature()
         break;
 
     case 7:
-        ProcessFanSpeed();
+        g_settings.SetFanSpeed();
         // Fallthrough
 
     default:
@@ -270,9 +220,9 @@ static const char pm_mainMenuTitle[] PROGMEM = "Select mode:";
 static const char pm_mainMenu0[] PROGMEM = "Charger";
 static const char pm_mainMenu1[] PROGMEM = "Power Supply";
 static const char pm_mainMenu2[] PROGMEM = "Settings";
-static const char pm_mainMenu3[] PROGMEM = "Calibration";
+static const char pm_mainMenu3[] PROGMEM = "Charger profiles";
 static const char pm_mainMenu4[] PROGMEM = "Music player";
-static const char pm_mainMenu5[] PROGMEM = "Charger profiles";
+static const char pm_mainMenu5[] PROGMEM = "Calibration";
 static const char pm_mainMenu6[] PROGMEM = "About";
 
 static const display::Menu pm_mainMenu PROGMEM =
@@ -333,7 +283,7 @@ int main()
             break;
 
         case 3:
-            screen::calibration::Show();
+            screen::charger_profile::Show(false);
             break;
 
         case 4:
@@ -341,7 +291,7 @@ int main()
             break;
 
         case 5:
-            screen::charger_profile::Show(false);
+            screen::calibration::Show();
             break;
 
         case 6:

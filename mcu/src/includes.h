@@ -14,6 +14,8 @@
 #define HIBYTE(n) ((n) >> 8)
 #define ABS(n) ((n) < 0 ? -(n) : (n))
 
+#define BREAK asm volatile ("BREAK")
+
 #define MAX_VOLTAGE 24000
 #define MAX_CURRENT 8000
 

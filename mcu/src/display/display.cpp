@@ -81,7 +81,7 @@ void SetColors(uint16_t bgColor, uint16_t fgColor)
 void __attribute__((noinline)) SetUiElementColors(int8_t cursorPosition, int8_t nElement)
 {
     uint16_t bgColor = CLR_BLACK, fgColor = CLR_WHITE;
-    if ((cursorPosition & 0x7F) == nElement)
+    if ((cursorPosition & (~DSD_CURSOR_SKIP)) == nElement)
     {
         bgColor = CLR_BG_CURSOR;
         if (cursorPosition & DSD_CURSOR_SKIP)
@@ -365,6 +365,9 @@ bool UiScreen::CheckFailureState()
 
         if (g_failureState & FAILURE_POWER_LOW)
         {
+            // Try to save settings first
+            g_settings.SaveToEeprom();
+
             display::MessageBox(display::pm_warning, pm_lowPower, MB_WARNING);
 
             while (g_failureState & FAILURE_POWER_LOW)
