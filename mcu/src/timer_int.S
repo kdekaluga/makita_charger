@@ -13,9 +13,9 @@ tm0_process_current:
 
     ; Check for a short circuit
     ; Here we consider ~11 A and above as short circuit
-    cpi     R31, 0x03
+    cpi     R31, hi8(ADC_SHORT_CIRCUIT_VALUE)
     brcs    tm0_no_short_circuit
-    cpi     R30, 0xE0
+    cpi     R30, lo8(ADC_SHORT_CIRCUIT_VALUE)
     brcs    tm0_no_short_circuit
 
     ; Short circuit detected! Reset the PWM and PID integral values
@@ -163,16 +163,20 @@ tm0_early_process_current:
     sts     (ADCSRA), R19
 
     ; Current
-    lds     R19, (g_adcCurrentAcc + 0)
     lds     R30, (ADCL)
+    lds     R19, (g_adcCurrentAcc + 0)
+    cpi     R30, lo8(ADC_SHORT_CIRCUIT_VALUE)
+    brcs    tm0_early_process_current_no_short_circuit
+
     add     R19, R30
-    lds     R30, (ADCH)
     sts     (g_adcCurrentAcc + 0), R19
+
+    lds     R30, (ADCH)
     lds     R19, (g_adcCurrentAcc + 1)
     adc     R19, R30
     sts     (g_adcCurrentAcc + 1), R19
 
-    cpi     R30, 3
+    cpi     R30, hi8(ADC_SHORT_CIRCUIT_VALUE)
     brcs    tm0_early_dither
 
     clr     R19
@@ -182,6 +186,16 @@ tm0_early_process_current:
     sts     (g_pidIntegral + 0), R19
     sts     (g_pidIntegral + 1), R19
     sts     (g_pidIntegral + 2), R19
+    rjmp    tm0_early_dither
+
+tm0_early_process_current_no_short_circuit:
+    add     R19, R30
+    sts     (g_adcCurrentAcc + 0), R19
+
+    lds     R30, (ADCH)
+    lds     R19, (g_adcCurrentAcc + 1)
+    adc     R19, R30
+    sts     (g_adcCurrentAcc + 1), R19
 
 tm0_early_dither:
     ; R31 = (g_pwmValue + 1)
