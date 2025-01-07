@@ -13,9 +13,9 @@ tm0_process_current:
 
     ; Check for a short circuit
     ; Here we consider ~11 A and above as short circuit
-    cpi     R17, 0x03
+    cpi     R31, 0x03
     brcs    tm0_no_short_circuit
-    cpi     R16, 0xE0
+    cpi     R30, 0xE0
     brcs    tm0_no_short_circuit
 
     ; Short circuit detected! Reset the PWM and PID integral values
@@ -30,19 +30,19 @@ tm0_process_current:
 tm0_no_short_circuit:
     ; Update the current accumulator
     lds     R19, (g_adcCurrentAcc + 0)
-    add     R16, R19
+    add     R30, R19
     lds     R19, (g_adcCurrentAcc + 1)
-    adc     R17, R19
-    sts     (g_adcCurrentAcc + 0), R16
-    sts     (g_adcCurrentAcc + 1), R17
+    adc     R31, R19
+    sts     (g_adcCurrentAcc + 0), R30
+    sts     (g_adcCurrentAcc + 1), R31
     rjmp    tm0_1
 
 
 TIMER0_OVF_vect:
-	push	R16
-	in		R16, (SREG)
-	push    R16
-	push    R17
+	push	R30
+	in		R30, (SREG)
+	push    R30
+	push    R31
     push    R18
     push    R19
     ; 11c
@@ -52,7 +52,7 @@ TIMER0_OVF_vect:
     ; of each kind (totally 8 interrupts) and launch the PID routine to adjust
     ; the PWM width
     lds     R18, (g_timerCounter)
-    lds     R17, (g_pwmValue + 1)
+    lds     R31, (g_pwmValue + 1)
 
     ; A little trick to improve measurements accuracy...
     ;
@@ -86,27 +86,27 @@ TIMER0_OVF_vect:
     ; and select one of the measurement options based on that.
     ;
     ; Good range for a check condition (found experimentally): 55 - 75
-    cpi     R17, 65
+    cpi     R31, 65
     brcc    tm0_early_start
 
     ; Perform PWM dithering to increase its resolution
-    lds     R16, (g_pwmValue + 0)
+    lds     R30, (g_pwmValue + 0)
     lds     R19, (g_pwmLowPos)
-    add     R16, R19
+    add     R30, R19
     ldi     R19, 0
-    adc     R17, R19
-    out     (OCR0A), R17
-    sts     (g_pwmLowPos), R16
+    adc     R31, R19
+    out     (OCR0A), R31
+    sts     (g_pwmLowPos), R30
 
-    ; if the target PWM is 0, disable it completely 
-    ldi     R17, BV(COM0A1) | BV(COM0B1) | BV(WGM01) | BV(WGM00)
+    ; If the target PWM is 0, disable it completely 
+    ldi     R31, BV(COM0A1) | BV(COM0B1) | BV(WGM01) | BV(WGM00)
     brne    .+2
-    ldi     R17, BV(COM0B1) | BV(WGM01) | BV(WGM00)
-    out     (TCCR0A), R17
+    ldi     R31, BV(COM0B1) | BV(WGM01) | BV(WGM00)
+    out     (TCCR0A), R31
 
     ; Read results of the previous ADC conversion
-    lds     R16, (ADCL)
-    lds     R17, (ADCH)
+    lds     R30, (ADCL)
+    lds     R31, (ADCH)
 
     sbrc    R18, 5
     rjmp    tm0_process_current
@@ -120,18 +120,18 @@ TIMER0_OVF_vect:
 
     ; Update the voltage accumulator
     lds     R19, (g_adcVoltageAcc + 0)
-    add     R16, R19
+    add     R30, R19
     lds     R19, (g_adcVoltageAcc + 1)
-    adc     R17, R19
-    sts     (g_adcVoltageAcc + 0), R16
-    sts     (g_adcVoltageAcc + 1), R17
+    adc     R31, R19
+    sts     (g_adcVoltageAcc + 0), R30
+    sts     (g_adcVoltageAcc + 1), R31
     rjmp    tm0_1
 
 
 ; Eraly measurement option
 tm0_early_start:
     ; 18c
-    ; R17 = g_pwmValue + 1
+    ; R31 = (g_pwmValue + 1)
     ; R18 = g_timerCounter
     sbrc    R18, 5
     rjmp    tm0_early_process_current
@@ -145,12 +145,12 @@ tm0_early_start:
 
     ; Voltage
     lds     R19, (g_adcVoltageAcc + 0)
-    lds     R16, (ADCL)
-    add     R19, R16
-    lds     R16, (ADCH)
+    lds     R30, (ADCL)
+    add     R19, R30
+    lds     R30, (ADCH)
     sts     (g_adcVoltageAcc + 0), R19
     lds     R19, (g_adcVoltageAcc + 1)
-    adc     R19, R16
+    adc     R19, R30
     sts     (g_adcVoltageAcc + 1), R19
 
     rjmp    tm0_early_dither
@@ -164,15 +164,15 @@ tm0_early_process_current:
 
     ; Current
     lds     R19, (g_adcCurrentAcc + 0)
-    lds     R16, (ADCL)
-    add     R19, R16
-    lds     R16, (ADCH)
+    lds     R30, (ADCL)
+    add     R19, R30
+    lds     R30, (ADCH)
     sts     (g_adcCurrentAcc + 0), R19
     lds     R19, (g_adcCurrentAcc + 1)
-    adc     R19, R16
+    adc     R19, R30
     sts     (g_adcCurrentAcc + 1), R19
 
-    cpi     R16, 3
+    cpi     R30, 3
     brcs    tm0_early_dither
 
     clr     R19
@@ -184,18 +184,18 @@ tm0_early_process_current:
     sts     (g_pidIntegral + 2), R19
 
 tm0_early_dither:
-    ; R17 = g_pwmValue + 1
-    lds     R16, (g_pwmValue + 0)
+    ; R31 = (g_pwmValue + 1)
+    lds     R30, (g_pwmValue + 0)
     lds     R19, (g_pwmLowPos)
-    add     R16, R19
+    add     R30, R19
     ldi     R19, 0
-    adc     R17, R19
-    out     (OCR0A), R17
-    sts     (g_pwmLowPos), R16
+    adc     R31, R19
+    out     (OCR0A), R31
+    sts     (g_pwmLowPos), R30
 
     ; OCR0A here cannot be 0, so always enable PWM (-2 clocks)
-    ldi     R17, BV(COM0A1) | BV(COM0B1) | BV(WGM01) | BV(WGM00)
-    out     (TCCR0A), R17
+    ldi     R31, BV(COM0A1) | BV(COM0B1) | BV(WGM01) | BV(WGM00)
+    out     (TCCR0A), R31
 
 tm0_1:
     ; Increment the interrupt number
@@ -206,10 +206,10 @@ tm0_1:
 tm0_ret:
     pop     R19
     pop     R18
-    pop     R17
-	pop		R16
-	out		(SREG), R16
-	pop		R16
+    pop     R31
+	pop		R30
+	out		(SREG), R30
+	pop		R30
 
 	reti
 
@@ -224,11 +224,11 @@ tm0_8th:
     push    R21
     
     ; *** Voltage and current 256-sample averager ***
-    lds     R16, (g_adcCurrentAcc + 0)
-    lds     R17, (g_adcCurrentAcc + 1)
+    lds     R30, (g_adcCurrentAcc + 0)
+    lds     R31, (g_adcCurrentAcc + 1)
     lds     R18, (g_adcVoltageAcc + 0)
     lds     R19, (g_adcVoltageAcc + 1)
-    ; R17:R16 = g_adcCurrentAcc
+    ; R31:R30 = g_adcCurrentAcc
     ; R19:R18 = g_adcVoltageAcc
 
     clr     R20
@@ -243,10 +243,10 @@ tm0_8th:
     sts     (g_adcAveragerVoltageAcc + 2), R21
 
     lds     R21, (g_adcAveragerCurrentAcc + 0)
-    add     R21, R16
+    add     R21, R30
     sts     (g_adcAveragerCurrentAcc + 0), R21
     lds     R21, (g_adcAveragerCurrentAcc + 1)
-    adc     R21, R17
+    adc     R21, R31
     sts     (g_adcAveragerCurrentAcc + 1), R21
     lds     R21, (g_adcAveragerCurrentAcc + 2)
     adc     R21, R20
@@ -271,19 +271,19 @@ tm0_8th:
     ; Calculate the difference between the desired and actual current values
     lds     R20, (g_pidTargetCurrent + 0)
     lds     R21, (g_pidTargetCurrent + 1)
-    sub     R20, R16
-    sbc     R21, R17
+    sub     R20, R30
+    sbc     R21, R31
     ; R21:R20 = CDiff = g_pidTargetCurrent - g_adcCurrent = [-4092, 4092]
 
     ; If the actual current is greater than desired, switch to CC mode
     brmi    pid_switch_to_cc
 
     ; Calculate the difference between the desired and actual voltage values
-    lds     R16, (g_pidTargetVoltage + 0)
-    lds     R17, (g_pidTargetVoltage + 1)
-    sub     R16, R18
-    sbc     R17, R19
-    ; R17:R16 = VDiff = g_pidTargetVoltage - g_adcVoltage = [-4092, 4092]
+    lds     R30, (g_pidTargetVoltage + 0)
+    lds     R31, (g_pidTargetVoltage + 1)
+    sub     R30, R18
+    sbc     R31, R19
+    ; R31:R30 = VDiff = g_pidTargetVoltage - g_adcVoltage = [-4092, 4092]
 
     ; If the actual voltage is greater than desired, switch to CV mode
     brmi    pid_switch_to_cv
@@ -297,13 +297,13 @@ tm0_8th:
     ; If not CC, than it's CV...
 
 pid_switch_to_cv:
-    ; Switch mode to CV (it won't hurt if we're alreay in CV)
+    ; Switch mode to CV (it won't hurt if we're already in CV)
     ldi     R18, PID_MODE_CV
     sts     (g_pidMode), R18
 
     ; Put VDiff to R21:R20 and multiply it by 4 so the CV PID is
     ; a little more aggresive than the CC one
-    movw    R20, R16
+    movw    R20, R30
     lsl     R20
     rol     R21
     lsl     R20
@@ -319,8 +319,8 @@ pid_switch_to_cc:
 
 pid_update_integral:
     ; R21:R20 = diff (either VDiff*4 or CDiff), 
-    lds     R16, (g_pidIntegral + 0)
-    lds     R17, (g_pidIntegral + 1)
+    lds     R30, (g_pidIntegral + 0)
+    lds     R31, (g_pidIntegral + 1)
     lds     R18, (g_pidIntegral + 2)
 
     clr     R19
@@ -328,42 +328,42 @@ pid_update_integral:
     dec     R19
     ; R19:R21:R20 = diff
 
-    add     R16, R20
-    adc     R17, R21
+    add     R30, R20
+    adc     R31, R21
     adc     R18, R19
-    ; R18:R17:R16 = g_pidIntegral + diff
+    ; R18:R31:R30 = g_pidIntegral + diff
 
     ; Limit the PID integral value to prevent long recovery from a border state.
     ; Normally PID integral value must be in [0, 0x020000]
     brpl    pid_no_underflow
 
-    clr     R16
-    clr     R17
+    clr     R30
+    clr     R31
     clr     R18
     rjmp    pid_no_overflow
 
 pwm_no_underflow:
     cpi     R18, 1
     brcc    pwm_overflow
-    cpi     R17, 0xFF
+    cpi     R31, 0xFF
     brcs    pwm_set
 
 pwm_overflow:
-    clr     R16
-    ldi     R17, 0xFF
+    clr     R30
+    ldi     R31, 0xFF
     rjmp    pwm_set
 
 pid_no_underflow:
     cpi     R18, 0x02
     brcs    pid_no_overflow
 
-    clr     R16
-    clr     R17
+    clr     R30
+    clr     R31
     ldi     R18, 0x02
 
 pid_no_overflow:
-    sts     (g_pidIntegral + 0), R16
-    sts     (g_pidIntegral + 1), R17
+    sts     (g_pidIntegral + 0), R30
+    sts     (g_pidIntegral + 1), R31
     sts     (g_pidIntegral + 2), R18
 
     ; PWM = diff/2 + g_pidIntegral/2
@@ -374,71 +374,71 @@ pid_no_overflow:
     ; R19:R21:R20 = diff/2
 
     asr     R18
-    ror     R17
-    ror     R16
-    ; R18:R17:R16 = g_pidIntegral/2
+    ror     R31
+    ror     R30
+    ; R18:R31:R30 = g_pidIntegral/2
 
-    add     R16, R20
-    adc     R17, R21
+    add     R30, R20
+    adc     R31, R21
     adc     R18, R19
-    ; R18:R17:R16 = PWM
+    ; R18:R31:R30 = PWM
 
     ; Limit PWM value to [0, 0xFF00]
     brpl    pwm_no_underflow
 
 pwm_underflow:    
-    clr     R16
-    clr     R17
+    clr     R30
+    clr     R31
 
 pwm_set:
     cli
-    sts     (g_pwmValue + 0), R16
-    sts     (g_pwmValue + 1), R17
+    sts     (g_pwmValue + 0), R30
+    sts     (g_pwmValue + 1), R31
     sei
 
     ; *** Encoder ***
-    in      R16, (PIND)
-    andi    R16, BV(PD_ENCODER_DATA) | BV(PD_ENCODER_CLOCK)
-    lds     R17, (g_encoderState)
-    eor     R17, R16
+    in      R30, (PIND)
+    andi    R30, BV(PD_ENCODER_DATA) | BV(PD_ENCODER_CLOCK)
+    lds     R31, (g_encoderState)
+    eor     R31, R30
     breq    encoder_not_changed
 
-    sts     (g_encoderState), R16
+    sts     (g_encoderState), R30
 
     ; Check encoder clock, detect the rising edge (0 -> 1 transition)
-    and     R17, R16
-    sbrs    R17, PD_ENCODER_CLOCK
+    and     R31, R30
+    sbrs    R31, PD_ENCODER_CLOCK
     rjmp    encoder_not_changed
 
-    lds     R17, (g_encoderCounter)
-    inc     R17
-    sbrc    R16, PD_ENCODER_DATA
-    subi    R17, 2
-    sts     (g_encoderCounter), R17
+    lds     R31, (g_encoderCounter)
+    inc     R31
+    sbrc    R30, PD_ENCODER_DATA
+    subi    R31, 2
+    sts     (g_encoderCounter), R31
 
-    lds     R17, (g_settings + OFFSET_SETTINGS_BEEP_LENGTH)
-    sts     (g_keyBeepLengthLeft), R17
+    lds     R31, (g_settings + OFFSET_SETTINGS_BEEP_LENGTH)
+    sts     (g_keyBeepLengthLeft), R31
 
 encoder_not_changed:
     ; Check if we've accumulated 256 samples
-    lds     R16, (g_adcAveragerCounter)
-    inc     R16
-    sts     (g_adcAveragerCounter), R16
+    lds     R30, (g_adcAveragerCounter)
+    inc     R30
+    sts     (g_adcAveragerCounter), R30
 
     breq    .+2
     rjmp    tm0_notResetAverager
 
     ; Copy voltage values (divide by 256)
-    lds     R16, (g_adcAveragerVoltageAcc + 1)
-    lds     R17, (g_adcAveragerVoltageAcc + 2)
-    sts     (g_adcVoltageAverage + 0), R16
-    sts     (g_adcVoltageAverage + 1), R17
+    lds     R30, (g_adcAveragerVoltageAcc + 1)
+    lds     R31, (g_adcAveragerVoltageAcc + 2)
+    sts     (g_adcVoltageAverage + 0), R30
+    sts     (g_adcVoltageAverage + 1), R31
 
     ; Copy current values (divide by 256)
-    lds     R16, (g_adcAveragerCurrentAcc + 0)
-    lds     R17, (g_adcAveragerCurrentAcc + 1)
+    lds     R30, (g_adcAveragerCurrentAcc + 0)
+    lds     R31, (g_adcAveragerCurrentAcc + 1)
     lds     R18, (g_adcAveragerCurrentAcc + 2)
-    sts     (g_adcCurrentAverage + 0), R17
+    sts     (g_adcCurrentAverage + 0), R31
     sts     (g_adcCurrentAverage + 1), R18
 
     ; Reset averager accumulators
@@ -531,9 +531,9 @@ encoder_not_changed:
     ; 6. ???
     ; 7. PROFIT
 
-    ; Let's get back to the code. We have ADCcurrent*256 in R18:R17:R16
+    ; Let's get back to the code. We have ADCcurrent*256 in R18:R31:R30
     lds     R19, (g_settings + OFFSET_SETTINGS_CURRENT_OFFSET)
-    add     R17, R19
+    add     R31, R19
     adc     R18, R21
     sbrc    R19, 7
     dec     R18
@@ -541,17 +541,17 @@ encoder_not_changed:
     ; Don't allow the current sum to be negative
     brpl    current_sum_positive
 
-    clr     R16
-    clr     R17
+    clr     R30
+    clr     R31
     clr     R18
 
 current_sum_positive:
     lds     R19, (g_totalCurrentSum + 0)
-    add     R19, R16
+    add     R19, R30
     sts     (g_totalCurrentSum + 0), R19
 
     lds     R19, (g_totalCurrentSum + 1)
-    adc     R19, R17
+    adc     R19, R31
     sts     (g_totalCurrentSum + 1), R19
 
     lds     R19, (g_totalCurrentSum + 2)
@@ -573,30 +573,30 @@ current_sum_positive:
 tm0_notResetAverager:
 
     ; *** 100 Hz timer ***
-    lds     R16, (g_timer625DividerCounter + 0)
-    lds     R17, (g_timer625DividerCounter + 1)
-    subi    R16, lo8(-8)
-    sbci    R17, hi8(-8)
+    lds     R30, (g_timer625DividerCounter + 0)
+    lds     R31, (g_timer625DividerCounter + 1)
+    subi    R30, lo8(-8)
+    sbci    R31, hi8(-8)
     brmi    not_100Hz_timer
 
     ; Reset watchdog here, 100 times per second
     wdr
 
-    subi    R16, lo8(625)
-    sbci    R17, hi8(625)
-    sts     (g_timer625DividerCounter + 0), R16
-    sts     (g_timer625DividerCounter + 1), R17
+    subi    R30, lo8(625)
+    sbci    R31, hi8(625)
+    sts     (g_timer625DividerCounter + 0), R30
+    sts     (g_timer625DividerCounter + 1), R31
 
-    ; R16 - R21 are already saved
+    ; R18 - R21, R30 - R31 are already saved
     MPUSH   0, 1
+    MPUSH   16, 17
     MPUSH   22, 27
-    MPUSH   30, 31
 
     clr     R1
     call    Timer100Hz
 
-    MPOP    30, 31
     MPOP    22, 27
+    MPOP    16, 17
     MPOP    0, 1
 
     pop     R21
@@ -604,8 +604,8 @@ tm0_notResetAverager:
     rjmp    tm0_ret
 
 not_100Hz_timer:
-    sts     (g_timer625DividerCounter + 0), R16
-    sts     (g_timer625DividerCounter + 1), R17
+    sts     (g_timer625DividerCounter + 0), R30
+    sts     (g_timer625DividerCounter + 1), R31
 
     pop     R21
     pop     R20
