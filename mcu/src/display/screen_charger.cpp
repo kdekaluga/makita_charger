@@ -13,7 +13,7 @@ using ::charger::g_tempProfile;
 #define UI_CURRENT1 1
 #define UI_CURRENT2 2
 #define UI_CURRENT3 3
-#define UI_OPT_3PIN 4
+#define UI_OPT_MAKITA_PROTO 4
 #define UI_OPT_CHARGE_RESTART 5
 
 constexpr uint8_t ChargeModeYPos = 54;
@@ -116,11 +116,10 @@ void SetNoBatteryOuputValues()
     // We may have a positive current offset after calibration. This means that when ADC reports zero current,
     // we are displaying some non-zero value and there is no way for us to register current lower than this.
     // In this case we can't just set a very small output current since it could be lower than the offset value
-    // and thus PID will always be in the CC mode. To avoid it we add calibrated current offset to the open
+    // and thus PID will always be in the CC mode. To avoid this we add calibrated current offset to the open
     // current setting.
     uint16_t correction = g_settings.AdcCurrentToDisplayX1000(0);
     g_openCurrentCorrected = g_profile.m_openCurrentX1000 + correction;
-    g_noBatteryThresholdCurrent = 10 + correction;
     g_pidTargetCurrent = g_settings.DisplayX1000CurrentToAdc(g_openCurrentCorrected);
     g_outOn = true;
 }
@@ -130,6 +129,10 @@ void SetWorkingOutputValues()
     g_chargeFinishCurrentThreshold = static_cast<uint16_t>(
         (static_cast<uint32_t>(g_profile.m_chargeCurrentX1000)*g_profile.m_stopChargeCurrentPercent)/100
     );
+
+    g_noBatteryThresholdCurrent = g_openCurrentCorrected;
+    if (g_noBatteryThresholdCurrent + 10 >= g_chargeFinishCurrentThreshold)
+        g_noBatteryThresholdCurrent = g_chargeFinishCurrentThreshold - 10;
 
     g_pidTargetVoltage = g_settings.DisplayX1000VoltageToAdc(
         (g_profile.m_options & COPT_CCC_MODE) ? 24000 : g_profile.m_chargeVoltageX1000);
@@ -182,11 +185,48 @@ EState StateMachine(EState state, uint16_t voltage, uint16_t current)
 {
     uint16_t ticksInState = g_ticksInState;
 
+    const auto StartCharge = [&]() -> EState
+    {
+        utils::TimeCapacityReset();
+        SetWorkingOutputValues();
+        g_batteryChargeBarPosition = -CHARGE_BAR_WIDTH;
+        sound::PlayMusic(g_settings.m_chargeStartMusic);
+        return EState::MEASURING_VOLTAGE;
+    };
+
+    const auto NoBatteryMakita = [&]() -> EState
+    {
+        // Perform 1-wire reset five times and make sure the battery always responds
+        for (uint8_t i = 0; i < 5; ++i)
+        {
+            utils::Delay(10);
+
+            if (!one_wire::Reset())
+                return EState::RESET_TICKS;
+        }
+
+        g_outOn = false;
+
+        // OK, switch battery to the charge mode
+        one_wire::Send(0xCC);
+        one_wire::Send(0xF0);
+        one_wire::Send(0x00);
+
+        // Read the battery message
+        for (uint8_t i = 0; i < 32; ++i)
+            g_batteryMessage[i] = one_wire::Recv();
+
+        return StartCharge();
+    };
+
     switch (state)
     {
     case EState::NO_BATTERY:
         if (g_ticksInState < 10)
             return EState::DO_NOTHING;
+
+        if (g_profile.m_options & COPT_MAKITA_PROTOCOL)
+            return NoBatteryMakita();
 
         // Wait until the output voltage is quite stable
         if (ABS(static_cast<int16_t>(voltage - g_previousBatteryVoltage)) > 100)
@@ -214,11 +254,7 @@ EState StateMachine(EState state, uint16_t voltage, uint16_t current)
         }
 
         // Battery is OK, start charging process with the voltage measurement
-        utils::TimeCapacityReset();
-        SetWorkingOutputValues();
-        g_batteryChargeBarPosition = -CHARGE_BAR_WIDTH;
-        sound::PlayMusic(g_settings.m_chargeStartMusic);
-        return EState::MEASURING_VOLTAGE;
+        return StartCharge();
 
     case EState::INVALID_BATTERY:
         // Wait until either the voltage drops by 300 mV or drops below 200 mV.
@@ -576,10 +612,10 @@ void DrawElements(int8_t cursorPosition, uint8_t ticksElapsed)
     };
 
     // Options
-    static const char pm_opt3Pin[] PROGMEM = "3p";
+    static const char pm_opt3Pin[] PROGMEM = "Mk";
     static const char pm_optRestart[] PROGMEM = "Rst";
-    DrawOption(13, COPT_USE_3RD_PIN, UI_OPT_3PIN, pm_opt3Pin);
-    DrawOption(47, COPT_RESTART_CHARGE, UI_OPT_CHARGE_RESTART, pm_optRestart);
+    DrawOption(10, COPT_MAKITA_PROTOCOL, UI_OPT_MAKITA_PROTO, pm_opt3Pin);
+    DrawOption(50, COPT_RESTART_CHARGE, UI_OPT_CHARGE_RESTART, pm_optRestart);
 
     g_batteryChargeBarPosition += static_cast<int16_t>(ticksElapsed) << 5;
     int8_t* chargeBarPos = reinterpret_cast<int8_t*>(&g_batteryChargeBarPosition) + 1;
@@ -599,9 +635,12 @@ bool OnClick(int8_t cursorPosition)
         return false;
     }
 
-    if (cursorPosition == UI_OPT_3PIN)
+    if (cursorPosition == UI_OPT_MAKITA_PROTO)
     {
-        g_profile.m_options ^= COPT_USE_3RD_PIN;
+        // Makita protocol can be switched on or off only when there is no battery inserted
+        if (g_state == EState::NO_BATTERY)
+            g_profile.m_options ^= COPT_MAKITA_PROTOCOL;
+        
         return false;
     }
 

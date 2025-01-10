@@ -35,7 +35,7 @@ tm0_no_short_circuit:
     adc     R31, R19
     sts     (g_adcCurrentAcc + 0), R30
     sts     (g_adcCurrentAcc + 1), R31
-    rjmp    tm0_1
+    rjmp    tm0_1W_start
 
 
 TIMER0_OVF_vect:
@@ -125,10 +125,10 @@ TIMER0_OVF_vect:
     adc     R31, R19
     sts     (g_adcVoltageAcc + 0), R30
     sts     (g_adcVoltageAcc + 1), R31
-    rjmp    tm0_1
+    rjmp    tm0_1W_start
 
 
-; Eraly measurement option
+; Early measurement option
 tm0_early_start:
     ; 18c
     ; R31 = (g_pwmValue + 1)
@@ -211,7 +211,40 @@ tm0_early_dither:
     ldi     R31, BV(COM0A1) | BV(COM0B1) | BV(WGM01) | BV(WGM00)
     out     (TCCR0A), R31
 
-tm0_1:
+tm0_1W_start:
+    ; 1-Wire 
+    lds     R19, (g_1WireCounter)
+    subi    R19, 1
+    brcs    tm0_1W_end
+    brne    tm0_1W_waiting
+
+    // Switch 1-wire pin to input
+    cbi     DDRC, PC_1_WIRE
+
+    lds     ZL, (g_1WireAddress + 0)
+    lds     ZH, (g_1WireAddress + 1)
+    ld      R19, -Z
+    sts     (g_1WireAddress + 0), ZL
+    sts     (g_1WireAddress + 1), ZH
+
+    lsr     R19
+    sts     (g_1WireCounter), R19
+
+    // Read 1-wire pin and save it
+    in      R19, (PINC)
+    st      Z, R19
+
+    // If we need to output 1, do nothing
+    brcs    tm0_1W_end
+
+    // Switch 1-wire pin to output
+    sbi     DDRC, PC_1_WIRE
+    rjmp    tm0_1W_end
+
+tm0_1W_waiting:
+    sts     (g_1WireCounter), R19
+
+tm0_1W_end:
     ; Increment the interrupt number
     subi    R18, -0x20
     sts     (g_timerCounter), R18

@@ -262,8 +262,7 @@ int main()
 
     // Load the last selected charger profile
     charger::g_profile.LoadFromEeprom(g_settings.m_chargerProfileNumber);
-    
-    // Initially start in the charger mode
+
     uint8_t mode = 0;
     for (;;)
     {

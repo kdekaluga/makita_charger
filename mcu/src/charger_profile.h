@@ -6,8 +6,8 @@ namespace charger {
 
 // *** Charge profile options ***
 
-// Whether to use Makita 3rd pin to detect battery issues
-#define COPT_USE_3RD_PIN 0x01
+// Whether to use Makita 1-wire protocol
+#define COPT_MAKITA_PROTOCOL 0x01
 
 // Whether to use continuos constant current (CCC) mode
 #define COPT_CCC_MODE 0x02

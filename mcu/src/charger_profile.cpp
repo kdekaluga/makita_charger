@@ -11,22 +11,22 @@ static const SProfile pm_profiles[EEPROM_PROFILES_COUNT] PROGMEM =
 {
     // Profile 0
     {
-        .m_name = {_DRO_STR20("Makita 18V 3pin     ")},
+        .m_name = {_DRO_STR20("Makita 18V Original ")},
         .m_nameLength = 15,
         .m_chargeVoltageX1000 = 21000,
         .m_chargeCurrentX1000 = 2000,
-        .m_openVoltageX1000 = 21500,
+        .m_openVoltageX1000 = 21000,
         .m_openCurrentX1000 = 30,
         .m_minBatteryVoltageX1000 = 15000,
         .m_restartChargeVoltageX1000 = 20500,
         .m_stopChargeCurrentPercent = 10,
-        .m_options = COPT_USE_3RD_PIN,
+        .m_options = COPT_MAKITA_PROTOCOL,
         .m_magicNumber = SProfile::MagicNumber,
     },
 
     // Profile 1
     {
-        .m_name = {_DRO_STR20("Makita 18V 2pin     ")},
+        .m_name = {_DRO_STR20("Makita 18V Fake     ")},
         .m_nameLength = 15,
         .m_chargeVoltageX1000 = 21000,
         .m_chargeCurrentX1000 = 2000,

@@ -43,6 +43,9 @@ inline EState operator |(EState op1, EState op2)
 var EState g_state;
 var uint16_t g_ticksInState;
 
+// Makita battery message
+var uint8_t g_batteryMessage[32];
+
 // Used internally by StateMachine()
 var uint16_t g_previousBatteryVoltage;
 var uint8_t g_noBatteryDetectCount;
@@ -69,7 +72,6 @@ var int8_t g_smoothCurrentTrend;
 var uint16_t g_smoothCurrentValue;
 
 void Show();
-
 
 } // namespace screen::charger
 

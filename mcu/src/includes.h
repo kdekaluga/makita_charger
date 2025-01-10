@@ -27,8 +27,8 @@
 
 #define DEFAULT_VOLTAGE_OFFSET static_cast<int8_t>(253)
 #define DEFAULT_VOLTAGE_COEFF 24580
-#define DEFAULT_CURRENT_OFFSET 0
-#define DEFAULT_CURRENT_COEFF 12280
+#define DEFAULT_CURRENT_OFFSET -2
+#define DEFAULT_CURRENT_COEFF 12300
 
 #include <avr/pgmspace.h>
 #include <avr/eeprom.h>
@@ -39,6 +39,7 @@
 #include "charger_profile.h"
 #include "utils.h"
 #include "twi/twi.h"
+#include "one_wire/one_wire.h"
 #include "display/display.h"
 #include "display/screen_power_supply.h"
 #include "display/screen_charger.h"

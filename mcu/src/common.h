@@ -21,6 +21,9 @@
 #define PD_ENCODER_CLOCK 4
 #define PD_ENCODER_SWITCH 7
 
+// 1-Wire (port C)
+#define PC_1_WIRE 3
+
 // Output pins
 #define PD_RELAY 3
 #define PB_OC1A 1
@@ -29,7 +32,7 @@
 
 // Input pins
 #define PC_IN_POWER_OK 2
-#define PC_IN_BATTERY_STATUS 3
+#define PB_IN_BATTERY_STATUS 4
 
 // PWM
 #define ADC_CHANNEL_VOLTAGE 0

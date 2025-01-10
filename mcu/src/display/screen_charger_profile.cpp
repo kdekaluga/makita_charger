@@ -104,7 +104,7 @@ struct SBitOption
 static const SBitOption pm_options[] PROGMEM =
 {
     {YLine1, UI_OPT_CCC, COPT_CCC_MODE},
-    {YLine3, UI_OPT_3RD_PIN, COPT_USE_3RD_PIN},
+    {YLine3, UI_OPT_3RD_PIN, COPT_MAKITA_PROTOCOL},
     {YLine5, UI_OPT_RESTART, COPT_RESTART_CHARGE},
 };
 
@@ -188,7 +188,7 @@ void DrawBackgroundP3()
 
         DRO_FGCOLOR(CLR_GRAY),
         DRO_STR(7, YLine1, S, "CCC mode", 8),
-        DRO_STR(7, YLine2, S, "Use Makita 3rd pin", 18),
+        DRO_STR(7, YLine2, S, "Use Makita protocol", 19),
         DRO_STR(7, YLine4, S, "Restart charge after", 20),
         DRO_STR(7, YLine5, S, "completion", 10),
 
@@ -303,7 +303,7 @@ bool OnClick(int8_t cursorPosition)
 
     if (cursorPosition == UI_OPT_3RD_PIN)
     {
-        g_editorProfile.m_options ^= COPT_USE_3RD_PIN;
+        g_editorProfile.m_options ^= COPT_MAKITA_PROTOCOL;
         return false;
     }
 

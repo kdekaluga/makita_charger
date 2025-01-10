@@ -14,7 +14,7 @@
 // General purpose buffer
 var char g_buffer[16];
 
-// Timer0 overflow interrupt counter, 0-7
+// Timer0 overflow interrupt counter, 0x00, 0x20, 0x40, ... 0xE0
 var uint8_t g_timerCounter;
 
 // Timer 625 divider counter
@@ -162,7 +162,7 @@ struct SSettings
     SPsProfile m_psProfiles[10];
 
     // Magic number
-    static constexpr uint16_t MagicNumber = 0x1235;
+    static constexpr uint16_t MagicNumber = 0x1236;
     uint16_t m_magicNumber;
 
     // Measurement conversion routines
