@@ -85,6 +85,7 @@ void SSettings::ResetToDefault()
         .m_chargeEndMusic = 3,
         .m_chargeInterruptedMusic = 5,
         .m_badBatteryMusic = 7,
+        .m_batteryErrorMusic = 8,
 
         .m_chargerProfileNumber = 0,
         .m_psSettings = {12000, 1000},

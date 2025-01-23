@@ -8,7 +8,7 @@ struct SMelody
     const uint8_t* m_data;
 };
 
-#define MELODIES_COUNT 14
+#define MELODIES_COUNT 15
 extern const SMelody pm_melodies[MELODIES_COUNT] PROGMEM;
 
 extern "C" {

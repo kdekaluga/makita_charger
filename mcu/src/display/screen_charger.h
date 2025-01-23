@@ -12,6 +12,7 @@ enum class EState : uint8_t
     MEASURING_VOLTAGE,
     CHARGING,
     CHARGE_COMPLETE,
+    BATTERY_ERROR,
 
     // Do nothing
     DO_NOTHING = 0x0E,

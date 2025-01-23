@@ -19,6 +19,7 @@ enum EUiElements: int8_t
     // Page 2
     UI_INTERRUPT_SOUND,
     UI_BAD_BATTERY_SOUND,
+    UI_BATTERY_ERROR_SOUND,
 
     // Page 3
     UI_FAN_PWM_MIN,
@@ -139,6 +140,7 @@ static const SValue pm_values[] PROGMEM =
     // Page 2, 2 values
     {SValue::SOUND, YLine2, UI_INTERRUPT_SOUND, &g_settings.m_chargeInterruptedMusic},
     {SValue::SOUND, YLine4, UI_BAD_BATTERY_SOUND, &g_settings.m_badBatteryMusic},
+    {SValue::SOUND, YLine6, UI_BATTERY_ERROR_SOUND, &g_settings.m_batteryErrorMusic},
 
     // Page 3, 5 values
     {SValue::U8_2D, YLine2, UI_FAN_PWM_MIN, &g_settings.m_fanPwmMin, 3, 64},
@@ -156,7 +158,7 @@ static const SValue pm_values[] PROGMEM =
 static const SPageInfo pm_pages[] PROGMEM =
 {
     {5, &DrawBackgroundPage0},
-    {2, &DrawBackgroundPage1},
+    {3, &DrawBackgroundPage1},
     {5, &DrawBackgroundPage2},
     {3, &DrawBackgroundPage3},
 };
@@ -198,6 +200,7 @@ int8_t DrawBackgroundPage1()
         DRO_FGCOLOR(CLR_GRAY),
         DRO_STR(7, YLine1, S, "Charge break sound:", 19),
         DRO_STR(7, YLine3, S, "Bad battery sound:", 18),
+        DRO_STR(7, YLine5, S, "Battery error sound:", 20),
         DRO_END
     };
     display::DrawObjects(pm_bgObjects, CLR_RED_BEAUTIFUL, CLR_WHITE);

@@ -7,7 +7,7 @@ using ::charger::g_tempProfile;
 
 #define CHARGE_BAR_WIDTH 7
 
-#define UI_ELEMENT_COUNT 6
+#define UI_ELEMENT_COUNT 7
 
 #define UI_CCCMODE 0
 #define UI_CURRENT1 1
@@ -15,6 +15,7 @@ using ::charger::g_tempProfile;
 #define UI_CURRENT3 3
 #define UI_OPT_MAKITA_PROTO 4
 #define UI_OPT_CHARGE_RESTART 5
+#define UI_BATTERY_ERROR_CONTINUE 6
 
 constexpr uint8_t ChargeModeYPos = 54;
 constexpr uint8_t CurrentYPos = 81;
@@ -121,6 +122,7 @@ void SetNoBatteryOuputValues()
     uint16_t correction = g_settings.AdcCurrentToDisplayX1000(0);
     g_openCurrentCorrected = g_profile.m_openCurrentX1000 + correction;
     g_pidTargetCurrent = g_settings.DisplayX1000CurrentToAdc(g_openCurrentCorrected);
+    g_batteryChargePercent = g_batteryChargePixels = 0;
     g_outOn = true;
 }
 
@@ -181,6 +183,16 @@ int8_t DrawBackground()
     return DSD_CURSOR_HIDDEN;
 }
 
+void EraseBackground()
+{
+    static const display::Rect pm_eraseBgRects[] PROGMEM =
+    {
+        {93, 32, 145, 83},
+        {2, 117, 236, 67},
+    };
+    display::FillRects(pm_eraseBgRects, 2, CLR_BLACK);
+}
+
 EState StateMachine(EState state, uint16_t voltage, uint16_t current)
 {
     uint16_t ticksInState = g_ticksInState;
@@ -192,6 +204,12 @@ EState StateMachine(EState state, uint16_t voltage, uint16_t current)
         g_batteryChargeBarPosition = -CHARGE_BAR_WIDTH;
         sound::PlayMusic(g_settings.m_chargeStartMusic);
         return EState::MEASURING_VOLTAGE;
+    };
+
+    const auto FinishCharge = [&]() -> EState
+    {
+        sound::PlayMusic(g_settings.m_chargeEndMusic);
+        return EState::CHARGE_COMPLETE;
     };
 
     const auto NoBatteryMakita = [&]() -> EState
@@ -216,7 +234,17 @@ EState StateMachine(EState state, uint16_t voltage, uint16_t current)
         for (uint8_t i = 0; i < 32; ++i)
             g_batteryMessage[i] = one_wire::Recv();
 
+        // Wait a little bit
+        utils::Delay(50);
+
         return StartCharge();
+    };
+
+    const auto BatteryError = [&]() -> EState
+    {
+        g_outOn = false;
+        sound::PlayMusic(g_settings.m_batteryErrorMusic);
+        return EState::BATTERY_ERROR;
     };
 
     switch (state)
@@ -309,10 +337,7 @@ EState StateMachine(EState state, uint16_t voltage, uint16_t current)
 
         // If we're in the CCC mode and we've reached our target voltage, stop the charge
         if ((g_profile.m_options & COPT_CCC_MODE) && voltage >= g_profile.m_chargeVoltageX1000)
-        {
-            sound::PlayMusic(g_settings.m_chargeEndMusic);
-            return EState::CHARGE_COMPLETE;
-        }
+            return FinishCharge();
 
         // Switch output back on
         g_outOn = true;
@@ -331,9 +356,8 @@ EState StateMachine(EState state, uint16_t voltage, uint16_t current)
             g_outOn = false;
             if ((g_profile.m_options & COPT_CCC_MODE) || !g_chargeCanBeFinished)
                 return EState::MEASURING_VOLTAGE | EState::DONT_ERASE_BACKGROUND;
-            
-            sound::PlayMusic(g_settings.m_chargeEndMusic);
-            return EState::CHARGE_COMPLETE;
+
+            return FinishCharge();            
         }
 
         // If the charge current exceeds the threshold value at least once in 10 seconds,
@@ -341,15 +365,34 @@ EState StateMachine(EState state, uint16_t voltage, uint16_t current)
         if (current >= g_chargeFinishCurrentThreshold)
             g_chargeCanBeFinished = false;
 
-        // Battery was removed?
-        if (current >= g_noBatteryThresholdCurrent)
+        // Check battery status
+        if (g_profile.m_options & COPT_MAKITA_PROTOCOL)
         {
-            g_noBatteryDetectCount = 0;
-            return EState::DO_NOTHING;
-        }
+            if (PINB & BV(PB_IN_BATTERY_STATUS))
+            {
+                g_noBatteryDetectCount = 0;
+                return EState::DO_NOTHING;
+            }
 
-        if (++g_noBatteryDetectCount < 3)
-            return EState::DO_NOTHING;
+            if (++g_noBatteryDetectCount < 3)
+                return EState::DO_NOTHING;
+
+            // The battery is here but its status line is low
+            if (one_wire::Reset())
+                return BatteryError();
+
+        } else
+        {
+            // Battery was removed?
+            if (current >= g_noBatteryThresholdCurrent)
+            {
+                g_noBatteryDetectCount = 0;
+                return EState::DO_NOTHING;
+            }
+
+            if (++g_noBatteryDetectCount < 3)
+                return EState::DO_NOTHING;
+        }
 
         SetNoBatteryOuputValues();
         sound::PlayMusic(g_settings.m_chargeInterruptedMusic);
@@ -385,6 +428,9 @@ EState StateMachine(EState state, uint16_t voltage, uint16_t current)
 
         g_previousBatteryVoltage = voltage;
         return EState::RESET_TICKS;
+
+    case EState::BATTERY_ERROR:
+        return EState::DO_NOTHING;
 
     default:
         Init();
@@ -470,16 +516,10 @@ void DrawElements(int8_t cursorPosition, uint8_t ticksElapsed)
     EState newState = StateMachine(state, voltage, current);
     if (newState != EState::DO_NOTHING)
     {
-        static const display::Rect pm_eraseBgRects[] PROGMEM =
-        {
-            {93, 32, 145, 83},
-            {2, 117, 236, 67},
-        };
-
         if (newState != EState::RESET_TICKS)
         {
             if ((newState & EState::DONT_ERASE_BACKGROUND) != EState::DONT_ERASE_BACKGROUND)
-                display::FillRects(pm_eraseBgRects, 2, CLR_BLACK);
+                EraseBackground();
 
             g_state = state = newState & EState::STATE_MASK;
         }
@@ -566,9 +606,51 @@ void DrawElements(int8_t cursorPosition, uint8_t ticksElapsed)
         display::PrintStringRam(47, 176, g_buffer, 8);
     }
 
+    else if (state == EState::BATTERY_ERROR)
+    {
+        static const uint8_t pm_batteryErrorObjects[] PROGMEM =
+        {
+            DRO_STR(113, 67, S, "BATTERY", 7),
+            DRO_STR(120, 95, S, "ERROR!", 6),
+            DRO_FGCOLOR(CLR_GRAY),
+            DRO_STR(10, 145, S, "V:", 2),
+            DRO_STR(10, 173, S, "T:", 2),
+            DRO_END
+        };
+        display::DrawObjects(pm_batteryErrorObjects, CLR_BLACK, RGB(255, 153, 54));
+
+        voltage = SmoothValue(voltage, g_smoothVoltageValue, g_smoothVoltageTrend);
+        display::SetColor(CLR_VOLTAGE);
+        utils::VoltageToString(voltage, true);
+        display::PrintStringRam(10 + 15 + 6 + 6, 145, g_buffer, 6);
+
+        cli();
+        uint16_t tempBattery = g_temperatureBattery;
+        sei();
+
+        display::SetColor(utils::GetBatteryTempColor(tempBattery));
+        utils::TemperatureToString(utils::TemperatureToDisplayX100(tempBattery));
+        display::PrintStringRam(10 + 15 + 6 + 6, 173, g_buffer + 1, 5);
+
+        if ((g_profile.m_options & COPT_MAKITA_PROTOCOL) && (!(PINB & BV(PB_IN_BATTERY_STATUS))))
+        {
+            display::SetColor(CLR_RED_BEAUTIFUL);
+            static const char pm_fail[] PROGMEM = "FAIL"; // 14 + 16 + 7 + 14 = 51 px
+            display::PrintString(163, 145, pm_fail);
+        }
+        else
+        {
+            display::FillRect(163, 145 - 21, 51, 27, CLR_BLACK);
+        }
+
+        display::SetUiElementColors(cursorPosition, UI_BATTERY_ERROR_CONTINUE);
+        static const char pm_continue[] PROGMEM = "Continue";
+        display::PrintString(137, 173, pm_continue);
+    }
+
     // Board temperature
     display::SetSans12();
-    display::SetColor(utils::GetBoardTempColor(tempBoard));
+    display::SetColors(CLR_BLACK, utils::GetBoardTempColor(tempBoard));
     utils::TemperatureToString(utils::TemperatureToDisplayX100(tempBoard));
     g_buffer[0] = TEMP_BOARD_SYMBOL;
     display::PrintStringRam(10, 203, g_buffer, 6);
@@ -647,6 +729,18 @@ bool OnClick(int8_t cursorPosition)
     if (cursorPosition == UI_OPT_CHARGE_RESTART)
     {
         g_profile.m_options ^= COPT_RESTART_CHARGE;
+        return false;
+    }
+
+    if (cursorPosition == UI_BATTERY_ERROR_CONTINUE)
+    {
+        if (g_state == EState::BATTERY_ERROR)
+        {
+            EraseBackground();
+            g_state = EState::MEASURING_VOLTAGE;
+            g_ticksInState = 0;
+        }
+
         return false;
     }
 

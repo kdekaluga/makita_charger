@@ -136,6 +136,7 @@ struct SSettings
     uint8_t m_chargeEndMusic;
     uint8_t m_chargeInterruptedMusic;
     uint8_t m_badBatteryMusic;
+    uint8_t m_batteryErrorMusic;
 
     // Current charger profile number
     uint8_t m_chargerProfileNumber;

@@ -141,6 +141,15 @@ static const uint8_t pm_mSound3[] PROGMEM =
     NOTE_END
 };
 
+static const char pm_mSirenTitle[] PROGMEM = "Siren";
+static const uint8_t pm_mSiren[] PROGMEM =
+{
+    12,
+    N5(G5), N5(A4), N5(G5), N5(A4), N5(G5), N5(A4), N5(G5), N5(A4),
+    //N5(A4), N5(G5), N5(A4), N5(G5), N5(A4), N5(G5), N5(A4), N5(G5),
+    NOTE_END
+};
+
 static const char pm_mDassinTitle[] PROGMEM = "Joe Dassin";
 static const uint8_t pm_mDassin[] PROGMEM =
 {
@@ -228,20 +237,21 @@ static const uint8_t pm_mMelody2[] PROGMEM =
 
 static const SMelody pm_melodies[MELODIES_COUNT] PROGMEM = 
 {
-    {pm_mSilenceTitle, pm_mSilence},
-    {pm_mShortBeepTitle, pm_mShortBeep},
-    {pm_mLongBeepTitle, pm_mLongBeep},
-    {pm_mTripleBeepTitle, pm_mTripleBeep},
-    {pm_mSosTitle, pm_mSos},
-    {pm_mSound1Title, pm_mSound1},
-    {pm_mSound2Title, pm_mSound2},
-    {pm_mSound3Title, pm_mSound3},
-    {pm_mDassinTitle, pm_mDassin},
-    {pm_mDollyTitle, pm_mDolly},
-    {pm_mPinkEveningTitle, pm_mPinkEvening},
-    {pm_mOzoneTitle, pm_mOzone},
-    {pm_mMelody1Title, pm_mMelody1},
-    {pm_mMelody2Title, pm_mMelody2},
+    /* 00 */ {pm_mSilenceTitle, pm_mSilence},
+    /* 01 */ {pm_mShortBeepTitle, pm_mShortBeep},
+    /* 02 */ {pm_mLongBeepTitle, pm_mLongBeep},
+    /* 03 */ {pm_mTripleBeepTitle, pm_mTripleBeep},
+    /* 04 */ {pm_mSosTitle, pm_mSos},
+    /* 05 */ {pm_mSound1Title, pm_mSound1},
+    /* 06 */ {pm_mSound2Title, pm_mSound2},
+    /* 07 */ {pm_mSound3Title, pm_mSound3},
+    /* 08 */ {pm_mSirenTitle, pm_mSiren},
+    /* 09 */ {pm_mDassinTitle, pm_mDassin},
+    /* 10 */ {pm_mDollyTitle, pm_mDolly},
+    /* 11 */ {pm_mPinkEveningTitle, pm_mPinkEvening},
+    /* 12 */ {pm_mOzoneTitle, pm_mOzone},
+    /* 13 */ {pm_mMelody1Title, pm_mMelody1},
+    /* 14 */ {pm_mMelody2Title, pm_mMelody2},
 };
 
 
