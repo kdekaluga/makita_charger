@@ -619,11 +619,6 @@ void DrawElements(int8_t cursorPosition, uint8_t ticksElapsed)
         };
         display::DrawObjects(pm_batteryErrorObjects, CLR_BLACK, RGB(255, 153, 54));
 
-        voltage = SmoothValue(voltage, g_smoothVoltageValue, g_smoothVoltageTrend);
-        display::SetColor(CLR_VOLTAGE);
-        utils::VoltageToString(voltage, true);
-        display::PrintStringRam(10 + 15 + 6 + 6, 145, g_buffer, 6);
-
         cli();
         uint16_t tempBattery = g_temperatureBattery;
         sei();
@@ -632,20 +627,18 @@ void DrawElements(int8_t cursorPosition, uint8_t ticksElapsed)
         utils::TemperatureToString(utils::TemperatureToDisplayX100(tempBattery));
         display::PrintStringRam(10 + 15 + 6 + 6, 173, g_buffer + 1, 5);
 
-        if ((g_profile.m_options & COPT_MAKITA_PROTOCOL) && (!(PINB & BV(PB_IN_BATTERY_STATUS))))
-        {
-            display::SetColor(CLR_RED_BEAUTIFUL);
-            static const char pm_fail[] PROGMEM = "FAIL"; // 14 + 16 + 7 + 14 = 51 px
-            display::PrintString(163, 145, pm_fail);
-        }
-        else
-        {
-            display::FillRect(163, 145 - 21, 51, 27, CLR_BLACK);
-        }
+        display::SetColor(CLR_WHITE);
+        utils::CapacityToString();
+        display::PrintStringRam(130, 173, g_buffer, 8);
+
+        voltage = SmoothValue(voltage, g_smoothVoltageValue, g_smoothVoltageTrend);
+        display::SetColor(CLR_VOLTAGE);
+        utils::VoltageToString(voltage, true);
+        display::PrintStringRam(10 + 15 + 6 + 6, 145, g_buffer, 6);
 
         display::SetUiElementColors(cursorPosition, UI_BATTERY_ERROR_CONTINUE);
         static const char pm_continue[] PROGMEM = "Continue";
-        display::PrintString(137, 173, pm_continue);
+        display::PrintString(137, 145, pm_continue);
     }
 
     // Board temperature
@@ -654,6 +647,19 @@ void DrawElements(int8_t cursorPosition, uint8_t ticksElapsed)
     utils::TemperatureToString(utils::TemperatureToDisplayX100(tempBoard));
     g_buffer[0] = TEMP_BOARD_SYMBOL;
     display::PrintStringRam(10, 203, g_buffer, 6);
+
+    // Battery error flag
+    if (state == EState::BATTERY_ERROR && (g_profile.m_options & COPT_MAKITA_PROTOCOL) &&
+        (!(PINB & BV(PB_IN_BATTERY_STATUS))))
+    {
+        display::SetColor(CLR_RED_BEAUTIFUL);
+        static const char pm_fail[] PROGMEM = "Err"; // 15 + 8 + 8 = 31
+        display::PrintString(99, 203, pm_fail);
+    }
+    else
+    {
+        display::FillRect(99, 203 - 21, 31, 27, CLR_BLACK);
+    }
 
     // Time
     // Width = 13*6 + 6*2 = 90 px

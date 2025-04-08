@@ -444,27 +444,48 @@ pwm_set:
     sei
 
     ; *** Encoder ***
-    in      R30, (PIND)
-    andi    R30, BV(PD_ENCODER_DATA) | BV(PD_ENCODER_CLOCK)
-    lds     R31, (g_encoderState)
-    eor     R31, R30
+    in      R18, (PIND)
+    andi    R18, BV(PD_ENCODER_DATA) | BV(PD_ENCODER_CLOCK)
+    lds     R19, (g_encoderPinState)
+    eor     R19, R18
     breq    encoder_not_changed
 
-    sts     (g_encoderState), R30
+    sts     (g_encoderPinState), R18
 
-    ; Check encoder clock, detect the rising edge (0 -> 1 transition)
-    and     R31, R30
-    sbrs    R31, PD_ENCODER_CLOCK
-    rjmp    encoder_not_changed
+    lds     ZL, (g_encoderCycle)
+    clr     ZH
+    subi    ZL, lo8(-(encoderTable))
+    sbci    ZH, hi8(-(encoderTable))
 
-    lds     R31, (g_encoderCounter)
-    inc     R31
-    sbrc    R30, PD_ENCODER_DATA
-    subi    R31, 2
-    sts     (g_encoderCounter), R31
+    lpm     R19, Z+
+    cp      R19, R18
+    lpm     R19, Z+
+    brne    encoder_not_forward
 
-    lds     R31, (g_settings + OFFSET_SETTINGS_BEEP_LENGTH)
-    sts     (g_keyBeepLengthLeft), R31
+    ; Forward step
+    subi    ZL, lo8(encoderTable - 4)
+    rjmp    encoder_updated
+
+encoder_not_forward:
+    lpm     R19, Z+
+    cp      R19, R18
+    brne    encoder_not_changed
+
+    ; Backward step
+    lpm     R19, Z
+    subi    ZL, lo8(encoderTable + 4)
+
+encoder_updated:
+    lds     R18, (g_encoderCounter)
+    add     R18, R19
+    sts     (g_encoderCounter), R18
+
+    andi    ZL, 0x0C
+    sts     (g_encoderCycle), ZL
+
+    lds     ZL, (g_settings + OFFSET_SETTINGS_BEEP_LENGTH)
+    sbrc    R19, 0
+    sts     (g_keyBeepLengthLeft), ZL
 
 encoder_not_changed:
     ; Check if we've accumulated 256 samples
@@ -658,3 +679,15 @@ not_100Hz_timer:
     pop     R20
     rjmp    tm0_ret
 
+#define C0D0 0
+#define C1D0 BV(PD_ENCODER_CLOCK)
+#define C0D1 BV(PD_ENCODER_DATA)
+#define C1D1 BV(PD_ENCODER_DATA) | BV(PD_ENCODER_CLOCK)
+    
+encoderTable:
+    // Encoder cycle table.
+    // C means encoder clock pin and D means encoder data pin here 
+    .byte   C1D0, 1, C0D1, 0   //  C0D1 <- C0D0 -> C1D0
+    .byte   C1D1, 0, C0D0, 0   //  C0D0 <- C1D0 -> C1D1
+    .byte   C0D1, 0, C1D0, 0   //  C1D0 <- C1D1 -> C0D1
+    .byte   C0D0, 0, C1D1, -1  //  C1D1 <- C0D1 -> C0D0

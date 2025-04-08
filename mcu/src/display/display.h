@@ -22,7 +22,7 @@
 #define CLR_BG_ACTIVE RGB(0, 128, 128)
 #define CLR_BG_INACTIVE RGB(0, 64, 64)
 
-#define CLR_BG_CURSOR RGB(0x80, 0x80, 0x80)
+#define CLR_BG_CURSOR RGB(0xC0, 0xC0, 0x00)
 #define CLR_FG_CURSOR CLR_BLACK
 
 namespace display {

@@ -45,8 +45,14 @@ void InitMcu()
     while (ADCSRA & BV(ADSC))
     {}
 
-    // Set encoder clock to high to prevent accidental rising edge detection
-    g_encoderState = BV(PD_ENCODER_CLOCK);
+    // Set initial encoder cycle
+    uint8_t encoderPinState = PIND & (BV(PD_ENCODER_DATA) | BV(PD_ENCODER_CLOCK));
+    if (encoderPinState == BV(PD_ENCODER_CLOCK))
+        g_encoderCycle = 4;
+    else if (encoderPinState == (BV(PD_ENCODER_DATA) | BV(PD_ENCODER_CLOCK)))
+        g_encoderCycle = 8;
+    else if (encoderPinState == BV(PD_ENCODER_DATA))
+        g_encoderCycle = 12;
 
     // *** Timer0 ***
     // Timer0: PWM and fan

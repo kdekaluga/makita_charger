@@ -59,8 +59,11 @@ var uint8_t g_totalCurrentSum[6];
 
 // *** Encoder ***
 
-// Last encoder state (for the main interrupt)
-var uint8_t g_encoderState;
+// Last encoder pin state (for the main interrupt)
+var uint8_t g_encoderPinState;
+
+// Encoder cycle (0, 4, 8, 12)
+var uint8_t g_encoderCycle;
 
 // Represents relative encoder position
 var int8_t g_encoderCounter;
