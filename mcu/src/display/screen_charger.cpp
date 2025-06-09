@@ -214,6 +214,7 @@ EState StateMachine(EState state, uint16_t voltage, uint16_t current)
 
     const auto NoBatteryMakita = [&]() -> EState
     {
+        /*
         // Perform 1-wire reset five times and make sure the battery always responds
         for (uint8_t i = 0; i < 5; ++i)
         {
@@ -222,8 +223,14 @@ EState StateMachine(EState state, uint16_t voltage, uint16_t current)
             if (!one_wire::Reset())
                 return EState::RESET_TICKS;
         }
+        */
 
-        g_outOn = false;
+        // UPD: TPCell battery has some kind of a reduced One-Wire protocol support and 
+        // responds to the reset command only once, so we cannot reset it multiple times
+        utils::Delay(10);
+
+        if (!one_wire::Reset())
+            return EState::RESET_TICKS;
 
         // OK, switch battery to the charge mode
         one_wire::Send(0xCC);
@@ -233,6 +240,12 @@ EState StateMachine(EState state, uint16_t voltage, uint16_t current)
         // Read the battery message
         for (uint8_t i = 0; i < 32; ++i)
             g_batteryMessage[i] = one_wire::Recv();
+
+        // Check that the first byte of the received message is valid
+        if (g_batteryMessage[0] == 0x00 || g_batteryMessage[0] == 0xFF)
+            return EState::RESET_TICKS;
+
+        g_outOn = false;
 
         // Wait a little bit
         utils::Delay(50);

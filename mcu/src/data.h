@@ -95,6 +95,9 @@ var bool g_outOn;
 // bits 3-0 contain internal counter
 var volatile uint8_t g_failureState;
 
+// Display reset flag
+var volatile bool g_resetDisplay;
+
 #define FAILURE_NONE 0x10
 #define FAILURE_POWER_LOW 0x20
 #define FAILURE_OVERVOLTAGE 0x40

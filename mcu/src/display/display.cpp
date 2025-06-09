@@ -142,6 +142,8 @@ uint8_t DrawSettableDecimal(uint8_t x, uint8_t y, uint8_t count, uint8_t cursorP
             bgColorDraw = CLR_BG_CURSOR;
             if (hideSelected)
                 fgColorDraw = CLR_BG_CURSOR;
+            else
+                fgColorDraw = CLR_FG_CURSOR;
         }
 
         x += PrintGlyph(g_font, x, y, g_buffer[i], fgColorDraw, bgColorDraw);
@@ -297,6 +299,9 @@ uint8_t MessageBox(const char* caption, const char* text, uint8_t flags)
 
     for (;;)
     {
+        // TODO: redraw the entire message box if ProcessFailureStates() returns true
+        ProcessFailureStates();
+
         if (nButtons == 1)
         {
             // Just "OK", always under cursor
@@ -322,46 +327,22 @@ uint8_t MessageBox(const char* caption, const char* text, uint8_t flags)
     }
 }
 
-// *** UI Screen ***
-
-int8_t UiScreen::DrawBackground() const
-{
-    UiDrawBackgroundFunc func = reinterpret_cast<UiDrawBackgroundFunc>(pgm_read_word(&m_drawBackgroundFunc));
-    return func();
-}
-
-void UiScreen::DrawElements(int8_t cursorPosition, uint8_t ticksElapsed) const
-{
-    UiDrawElementsFunc func = reinterpret_cast<UiDrawElementsFunc>(pgm_read_word(&m_drawElementsFunc));
-    func(cursorPosition, ticksElapsed);
-}
-
-bool UiScreen::OnClickElement(int8_t cursorPosition) const
-{
-    UiOnClickElementFunc func = reinterpret_cast<UiOnClickElementFunc>(pgm_read_word(&m_onClickElementFunc));
-    return func(cursorPosition);
-}
-
-void UiScreen::OnChangeElement(int8_t cursorPosition, int8_t delta) const
-{
-    UiOnChangeElementFunc func = reinterpret_cast<UiOnChangeElementFunc>(pgm_read_word(&m_onChangeElementFunc));
-    func(cursorPosition, delta);
-}
-
-bool UiScreen::OnLongClick(int8_t cursorPosition) const
-{
-    UiOnLongClickFunc func = reinterpret_cast<UiOnLongClickFunc>(pgm_read_word(&m_onLongClickFunc));
-    return func(cursorPosition);
-}
-
-// Returns true if a message box was displayed and screen needs to be fully redrawn
-bool UiScreen::CheckFailureState()
+bool ProcessFailureStates()
 {
     bool result = false;
     for (;;)
     {
         if (g_failureState & FAILURE_NONE)
+        {
+            if (g_resetDisplay)
+            {
+                Init();
+                g_resetDisplay = false;
+                return true;
+            }
+
             return result;
+        }
 
         if (g_failureState & FAILURE_POWER_LOW)
         {
@@ -404,6 +385,38 @@ bool UiScreen::CheckFailureState()
     }
 }
 
+// *** UI Screen ***
+
+int8_t UiScreen::DrawBackground() const
+{
+    UiDrawBackgroundFunc func = reinterpret_cast<UiDrawBackgroundFunc>(pgm_read_word(&m_drawBackgroundFunc));
+    return func();
+}
+
+void UiScreen::DrawElements(int8_t cursorPosition, uint8_t ticksElapsed) const
+{
+    UiDrawElementsFunc func = reinterpret_cast<UiDrawElementsFunc>(pgm_read_word(&m_drawElementsFunc));
+    func(cursorPosition, ticksElapsed);
+}
+
+bool UiScreen::OnClickElement(int8_t cursorPosition) const
+{
+    UiOnClickElementFunc func = reinterpret_cast<UiOnClickElementFunc>(pgm_read_word(&m_onClickElementFunc));
+    return func(cursorPosition);
+}
+
+void UiScreen::OnChangeElement(int8_t cursorPosition, int8_t delta) const
+{
+    UiOnChangeElementFunc func = reinterpret_cast<UiOnChangeElementFunc>(pgm_read_word(&m_onChangeElementFunc));
+    func(cursorPosition, delta);
+}
+
+bool UiScreen::OnLongClick(int8_t cursorPosition) const
+{
+    UiOnLongClickFunc func = reinterpret_cast<UiOnLongClickFunc>(pgm_read_word(&m_onLongClickFunc));
+    return func(cursorPosition);
+}
+
 void UiScreen::Show() const
 {
     g_encoderCounter = 0;
@@ -420,7 +433,7 @@ void UiScreen::Show() const
         tick100Hz = newTick100Hz;
         ticks += dt;
 
-        if (CheckFailureState())
+        if (ProcessFailureStates())
         {
             DrawBackground();
             tick100Hz = g_100HzCounter;
@@ -450,7 +463,7 @@ void UiScreen::Show() const
             tick100Hz = g_100HzCounter;
             ticks = 0x20;
         }
-        else if (key == EEncoderKey::DownLong)
+        else if (key == EEncoderKey::UpLong)
         {
             if (OnLongClick(cursorPosition))
             {
@@ -653,6 +666,12 @@ uint8_t Menu::Show(uint8_t selectedItem) const
     DrawPage();
     for (;;)
     {
+        if (ProcessFailureStates())
+        {
+            DrawPage();
+            continue;
+        }
+
         EEncoderKey key = utils::GetEncoderKey();
         if (key == EEncoderKey::Up)
             return selectedItem;

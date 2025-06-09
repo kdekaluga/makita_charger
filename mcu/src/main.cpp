@@ -110,6 +110,12 @@ void ProcessEncoderButton()
             g_encoderKey = EEncoderKey::DownLong;
             sound::Beep();
         }
+        else if (buttonDownTime == 300)
+        {
+            // 3-second press and hold, reset the display
+            g_resetDisplay = true;
+            sound::Beep();
+        }
         else if (buttonDownTime == 600)
         {
             utils::DoSoftReset();
@@ -117,11 +123,14 @@ void ProcessEncoderButton()
     }
     else
     {
-        if (buttonDownTime >= 100)
-            g_encoderKey = EEncoderKey::UpLong;
+        if (buttonDownTime < 300)
+        {
+            if (buttonDownTime >= 100)
+                g_encoderKey = EEncoderKey::UpLong;
 
-        else if (buttonDownTime >= 2)
-            g_encoderKey = EEncoderKey::Up;
+            else if (buttonDownTime >= 2)
+                g_encoderKey = EEncoderKey::Up;
+        }
 
         buttonDownTime = 0;
     }

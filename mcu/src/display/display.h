@@ -23,7 +23,7 @@
 #define CLR_BG_INACTIVE RGB(0, 64, 64)
 
 #define CLR_BG_CURSOR RGB(0xC0, 0xC0, 0x00)
-#define CLR_FG_CURSOR CLR_BLACK
+#define CLR_FG_CURSOR CLR_WHITE
 
 namespace display {
 
@@ -137,6 +137,10 @@ uint8_t MessageBox(const char* caption, const char* text, uint8_t flags);
 #define MB_ERROR 0x08
 #define MB_WARNING 0x10
 
+// Checks if a failure happened and shows the corresponding message to the users.
+// Returns false if nothing happened, true if the screen must be redrawn.
+bool ProcessFailureStates();
+
 // *** UI screen ***
 
 class UiScreen
@@ -164,8 +168,6 @@ private:
     bool OnClickElement(int8_t cursorPosition) const;
     void OnChangeElement(int8_t cursorPosition, int8_t delta) const;
     bool OnLongClick(int8_t cursorPosition) const;
-
-    static bool CheckFailureState();
 };
 
 // *** Draw objects ***
