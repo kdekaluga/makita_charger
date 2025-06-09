@@ -462,18 +462,35 @@ pwm_set:
     lpm     R19, Z+
     brne    encoder_not_forward
 
-    ; Forward step
-    subi    ZL, lo8(encoderTable - 4)
+    ; Forward step, add 4 to the encoder cycle
+    subi    ZL, lo8(encoderTable - 4 + 2)
     rjmp    encoder_updated
+
+#define C0D0 0
+#define C1D0 BV(PD_ENCODER_CLOCK)
+#define C0D1 BV(PD_ENCODER_DATA)
+#define C1D1 BV(PD_ENCODER_DATA) | BV(PD_ENCODER_CLOCK)
+    
+encoderTable:
+    // Encoder cycles table. "C" means encoder clock pin and "D" means encoder data pin
+    .byte   C1D0, 1, C0D1, 0   //  C0D1 <- C0D0 -> C1D0
+    .byte   C1D1, 0, C0D0, 0   //  C0D0 <- C1D0 -> C1D1
+    .byte   C0D1, 0, C1D0, 0   //  C1D0 <- C1D1 -> C0D1
+    .byte   C0D0, 0, C1D1, -1  //  C1D1 <- C0D1 -> C0D0
+
+#undef C0D0
+#undef C1D0
+#undef C0D1
+#undef C1D1
 
 encoder_not_forward:
     lpm     R19, Z+
     cp      R19, R18
     brne    encoder_not_changed
 
-    ; Backward step
+    ; Backward step, subtract 4 from the encoder cycle
     lpm     R19, Z
-    subi    ZL, lo8(encoderTable + 4)
+    subi    ZL, lo8(encoderTable + 4 + 3)
 
 encoder_updated:
     lds     R18, (g_encoderCounter)
@@ -679,15 +696,3 @@ not_100Hz_timer:
     pop     R20
     rjmp    tm0_ret
 
-#define C0D0 0
-#define C1D0 BV(PD_ENCODER_CLOCK)
-#define C0D1 BV(PD_ENCODER_DATA)
-#define C1D1 BV(PD_ENCODER_DATA) | BV(PD_ENCODER_CLOCK)
-    
-encoderTable:
-    // Encoder cycle table.
-    // C means encoder clock pin and D means encoder data pin here 
-    .byte   C1D0, 1, C0D1, 0   //  C0D1 <- C0D0 -> C1D0
-    .byte   C1D1, 0, C0D0, 0   //  C0D0 <- C1D0 -> C1D1
-    .byte   C0D1, 0, C1D0, 0   //  C1D0 <- C1D1 -> C0D1
-    .byte   C0D0, 0, C1D1, -1  //  C1D1 <- C0D1 -> C0D0
