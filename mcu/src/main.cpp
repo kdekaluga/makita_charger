@@ -59,6 +59,14 @@ void CheckForFailures()
         overcurrentCounter = 0;
     }
 
+    // Overheating check, fixed hysteresis 10 degrees
+    int8_t temperature = static_cast<int8_t>(g_temperatureBoard >> 8);
+    int8_t maxTemp = static_cast<int8_t>(g_settings.m_overheatingTemp);
+    if (temperature > maxTemp)
+        failureState |= FAILURE_OVERHEATING;
+    else if (temperature <= maxTemp - 10)
+        failureState &= ~FAILURE_OVERHEATING;
+
     if (failureState & FAILURE_ANY)
     {
         // Switch off output relay and PWM generator

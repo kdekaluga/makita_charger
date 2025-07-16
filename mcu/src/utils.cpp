@@ -166,7 +166,7 @@ void CapacityToString()
     }
 
     if (g_buffer[0] == '0')
-        g_buffer[0] = 127;
+        g_buffer[0] = SYMBOL_SPACE_DIGIT;
 
     g_buffer[6] = 'A';
     g_buffer[7] = 'h';
@@ -206,7 +206,7 @@ void TemperatureToString(int16_t x100Temp)
     I16ToString(static_cast<uint16_t>(x100Temp), g_buffer, 1);
     g_buffer[4] = g_buffer[3];
     g_buffer[3] = '.';
-    g_buffer[5] = 0x80;
+    g_buffer[5] = SYMBOL_DEGREE;
 }
 
 uint16_t GetBoardTempColor(uint16_t temperature)
@@ -256,9 +256,9 @@ void I8ToStringSpaces(uint8_t value)
     I8ToString(value, g_buffer);
     if (g_buffer[0] == '0')
     {
-        g_buffer[0] = 127;
+        g_buffer[0] = SYMBOL_SPACE_DIGIT;
         if (g_buffer[1] == '0')
-            g_buffer[1] = 127;
+            g_buffer[1] = SYMBOL_SPACE_DIGIT;
     }
 }
 

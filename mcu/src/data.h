@@ -98,11 +98,12 @@ var volatile uint8_t g_failureState;
 // Display reset flag
 var volatile bool g_resetDisplay;
 
-#define FAILURE_NONE 0x10
+#define FAILURE_NONE 0x08
+#define FAILURE_OVERHEATING 0x10
 #define FAILURE_POWER_LOW 0x20
 #define FAILURE_OVERVOLTAGE 0x40
 #define FAILURE_OVERCURRENT 0x80
-#define FAILURE_ANY (FAILURE_POWER_LOW | FAILURE_OVERVOLTAGE | FAILURE_OVERCURRENT)
+#define FAILURE_ANY (FAILURE_OVERHEATING | FAILURE_POWER_LOW | FAILURE_OVERVOLTAGE | FAILURE_OVERCURRENT)
 
 // State of the temperature sensor request routine
 var uint8_t g_tempRequesterState;
@@ -165,11 +166,14 @@ struct SSettings
     uint8_t m_fanPowMax;
     uint8_t m_fanPowStop;
 
+    // Overheating temperature limit
+    uint8_t m_overheatingTemp;
+
     // Additional power supply profiles (10 pcs)
     SPsProfile m_psProfiles[10];
 
     // Magic number
-    static constexpr uint16_t MagicNumber = 0x1236;
+    static constexpr uint16_t MagicNumber = 0x1238;
     uint16_t m_magicNumber;
 
     // Measurement conversion routines

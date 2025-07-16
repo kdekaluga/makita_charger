@@ -100,6 +100,8 @@ void SSettings::ResetToDefault()
         .m_fanPowMax = 255,
         .m_fanPowStop = 85,
 
+        .m_overheatingTemp = 75,
+
         .m_psProfiles =
         {
             { 5000, 6000},
@@ -188,7 +190,7 @@ void SSettings::SetFanSpeed()
             return 0;
 
         if (wattage < m_fanPowMin)
-            return 0;
+            return DONT_CHANGE;
 
         if (wattage >= m_fanPowMax)
             return pwmMax;
@@ -206,6 +208,9 @@ void SSettings::SetFanSpeed()
     pwmSecondary = GetWattagePwm();
     if (pwmSecondary > pwmValue)
         pwmValue = pwmSecondary;
+
+    if (g_failureState & FAILURE_OVERHEATING)
+        pwmValue = pwmMax;
 
     if (pwmValue != DONT_CHANGE)
         OCR0B = pwmValue;

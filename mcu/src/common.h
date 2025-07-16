@@ -59,6 +59,9 @@
 
 #define DISPLAY_DOES_NOT_FIT 255
 
+#define SYMBOL_SPACE_DIGIT 0x7F
+#define SYMBOL_DEGREE 0x80
+
 // Quite a nasty part: avrgcc assembler cannot access C struct members since
 // it does not know a member offset. So we explicitly define needed offsets here.
 // And yes, if a struct definition is changed, you may need to manually fix the offsets.

@@ -260,7 +260,7 @@ void DrawElements(int8_t cursorPosition, uint8_t ticksElapsed)
             cursorPosition - UI_MIN_VOLTAGE, CLR_WHITE, CLR_BLACK);
 
         utils::I8ToString(g_editorProfile.m_stopChargeCurrentPercent, g_buffer);
-        g_buffer[0] = (cursorPosition != UI_FINISH_CURRENT && g_buffer[1] == '0') ? 127 : g_buffer[1];
+        g_buffer[0] = (cursorPosition != UI_FINISH_CURRENT && g_buffer[1] == '0') ? SYMBOL_SPACE_DIGIT : g_buffer[1];
         g_buffer[1] = g_buffer[2];
         display::DrawSettableDecimal(240 - 7 - 13*2 - 21, YLine6, 2,
             cursorPosition - UI_FINISH_CURRENT, CLR_WHITE, CLR_BLACK);

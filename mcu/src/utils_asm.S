@@ -119,7 +119,7 @@ dtsZero:
 
 	dec     R20
     brmi    dtsNoSpace
-	ldi		R21, 0x7F
+	ldi		R21, SYMBOL_SPACE_DIGIT
 
 dtsNoSpace:
 	st		Z+, R21

@@ -329,12 +329,16 @@ EState StateMachine(EState state, uint16_t voltage, uint16_t current)
 
         // Estimate the current battery charge in percents and pixels (to draw the battery icon) using
         // the following formula:
-        // Charge% = (voltage - minVoltage)/(maxVoltage - maxVoltage)*100
+        // Charge% = (voltage - minVoltage)/(maxVoltage - minVoltage)*100
         if (voltage >= g_profile.m_minBatteryVoltageX1000)
         {
             uint16_t maxDv = g_profile.m_chargeVoltageX1000 - g_profile.m_minBatteryVoltageX1000;
             uint32_t dv = voltage - g_profile.m_minBatteryVoltageX1000;
-            g_batteryChargePercent = static_cast<uint8_t>(dv*100/maxDv);
+            
+            // In real life the battery voltage won't go up to exactly maxVoltage,
+            // it will be a little lower thus not allowing the charge percentage to
+            // reach 100%. This is not beautiful, so we add 1 here.
+            g_batteryChargePercent = static_cast<uint8_t>(dv*100/maxDv) + 1;
             g_batteryChargePixels = static_cast<uint8_t>(dv*78/maxDv);
             if (g_batteryChargePercent > 100)
             {
@@ -424,7 +428,7 @@ EState StateMachine(EState state, uint16_t voltage, uint16_t current)
             return EState::DO_NOTHING;
 
         // If the battery voltage drops quite fast (more than 100 mV in 1.5 s),
-        // we consider that a battery was removed
+        // we consider that the battery was removed
         if (static_cast<int16_t>(g_previousBatteryVoltage - voltage) > 100)
         {
             SetNoBatteryOuputValues();

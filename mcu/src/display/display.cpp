@@ -10,6 +10,7 @@ const char pm_warning[] PROGMEM = "WARNING";
 const char pm_error[] PROGMEM = "ERROR";
 const char pm_failure[] PROGMEM = "FAILURE";
 const char pm_lowPower[] PROGMEM = "Low source\nvoltage! Operation\nsuspended until\npower restoration.";
+const char pm_overheating[] PROGMEM = "Critical board\ntemperature!\nOperation\nsuspended until\nboard cools down.";
 const char pm_overvoltage[] PROGMEM = "Output overvoltage\ndetected!\n"
     "This could be\nan internal failure.\nClick OK to reset";
 const char pm_overcurrent[] PROGMEM = "Output overcurrent\ndetected!\n"
@@ -171,7 +172,7 @@ uint8_t MessageBox(const char* caption, const char* text, uint8_t flags)
     constexpr uint8_t lineThick = 2;
     constexpr uint8_t captionYMargin = 3;
     constexpr uint8_t margin = 10;
-    constexpr uint8_t maxTextWidth = 220 - margin*2;
+    constexpr uint8_t maxTextWidth = 230 - margin*2;
     constexpr uint8_t minTextWidth = 150 - margin*2;
     constexpr uint8_t buttonDistance = 15;
     constexpr uint8_t buttonWidth = 60;
@@ -195,6 +196,10 @@ uint8_t MessageBox(const char* caption, const char* text, uint8_t flags)
 
         currentWidth += charWidth;
     }
+
+    // Check the last line length
+    if (currentWidth > textWidth)
+        textWidth = currentWidth;
 
     const uint8_t lineHeight = pgm_read_byte(&g_font->m_yAdvance);
     const int8_t lineYOffset = pgm_read_byte(&g_font->m_yFirstLineOffset);
@@ -344,14 +349,17 @@ bool ProcessFailureStates()
             return result;
         }
 
-        if (g_failureState & FAILURE_POWER_LOW)
+        if (g_failureState & (FAILURE_POWER_LOW | FAILURE_OVERHEATING))
         {
             // Try to save settings first
             g_settings.SaveToEeprom();
 
-            display::MessageBox(display::pm_warning, pm_lowPower, MB_WARNING);
+            if (g_failureState & FAILURE_POWER_LOW)
+                display::MessageBox(display::pm_warning, pm_lowPower, MB_WARNING);
+            else
+                display::MessageBox(display::pm_error, pm_overheating, MB_ERROR);
 
-            while (g_failureState & FAILURE_POWER_LOW)
+            while (g_failureState & (FAILURE_POWER_LOW | FAILURE_OVERHEATING))
                 asm volatile ("sleep");
 
             utils::ClearPendingKeys();

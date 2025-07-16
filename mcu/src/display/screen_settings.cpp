@@ -32,6 +32,7 @@ enum EUiElements: int8_t
     UI_FAN_POWER_STOP,
     UI_FAN_POWER_START,
     UI_FAN_POWER_MAX,
+    UI_OVERHEATING_TEMPERATURE,
 
     UI_ELEMENT_COUNT,
 };
@@ -57,10 +58,20 @@ struct SValue
 {
     enum EType: uint8_t
     {
+        // 8-bit value, two digits
         U8_2D,
+
+        // 8-bit value, three digits
         U8_3D,
+        
+        // 8-bit value representing power in ~1.18W units
         U8_PWR,
+
+        // 8-bit value representing melody number
         SOUND,
+
+        // 8-bit value representing Celsius degrees
+        DEGREES,
     };
 
     EType m_type;
@@ -73,6 +84,7 @@ struct SValue
     static constexpr uint8_t X2Digits = 240 - 7 - 13*2;
     static constexpr uint8_t X3Digits = 240 - 7 - 13*3;
     static constexpr uint8_t XPower = 240 - 7 - 13*3 - 22;
+    static constexpr uint8_t XDegrees = 240 - 7 - 13*2 - 14;
 
     void Draw(int8_t cursorPosition) const
     {
@@ -102,6 +114,13 @@ struct SValue
         }
 
         utils::I8ToStringSpaces(value);
+        if (type == DEGREES)
+        {
+            g_buffer[3] = SYMBOL_DEGREE;
+            display::PrintStringRam(XDegrees, y, g_buffer + 1, 3);
+            return;
+        }
+
         if (type == U8_2D)
             display::PrintStringRam(X2Digits, y, g_buffer + 1, 2);
         else
@@ -137,7 +156,7 @@ static const SValue pm_values[] PROGMEM =
     {SValue::SOUND, YLine5, UI_START_SOUND, &g_settings.m_chargeStartMusic},
     {SValue::SOUND, YLine7, UI_FINISH_SOUND, &g_settings.m_chargeEndMusic},
 
-    // Page 2, 2 values
+    // Page 2, 3 values
     {SValue::SOUND, YLine2, UI_INTERRUPT_SOUND, &g_settings.m_chargeInterruptedMusic},
     {SValue::SOUND, YLine4, UI_BAD_BATTERY_SOUND, &g_settings.m_badBatteryMusic},
     {SValue::SOUND, YLine6, UI_BATTERY_ERROR_SOUND, &g_settings.m_batteryErrorMusic},
@@ -145,14 +164,15 @@ static const SValue pm_values[] PROGMEM =
     // Page 3, 5 values
     {SValue::U8_2D, YLine2, UI_FAN_PWM_MIN, &g_settings.m_fanPwmMin, 3, 64},
     {SValue::U8_3D, YLine3, UI_FAN_PWM_MAX, &g_settings.m_fanPwmMax, 10, 128},
-    {SValue::U8_2D, YLine5, UI_FAN_TEMP_STOP, &g_settings.m_fanTempStop, 25, 60},
-    {SValue::U8_2D, YLine6, UI_FAN_TEMP_START, &g_settings.m_fanTempMin, 30, 60},
-    {SValue::U8_2D, YLine7, UI_FAN_TEMP_MAX, &g_settings.m_fanTempMax, 45, 90},
+    {SValue::DEGREES, YLine5, UI_FAN_TEMP_STOP, &g_settings.m_fanTempStop, 25, 60},
+    {SValue::DEGREES, YLine6, UI_FAN_TEMP_START, &g_settings.m_fanTempMin, 30, 60},
+    {SValue::DEGREES, YLine7, UI_FAN_TEMP_MAX, &g_settings.m_fanTempMax, 45, 90},
 
-    // Page 4, 3 values
+    // Page 4, 4 values
     {SValue::U8_PWR, YLine2, UI_FAN_POWER_STOP, &g_settings.m_fanPowStop, 0, 255},
     {SValue::U8_PWR, YLine3, UI_FAN_POWER_START, &g_settings.m_fanPowMin, 0, 255},
     {SValue::U8_PWR, YLine4, UI_FAN_POWER_MAX, &g_settings.m_fanPowMax, 0, 255},
+    {SValue::DEGREES, YLine6, UI_OVERHEATING_TEMPERATURE, &g_settings.m_overheatingTemp, 70, 90},
 };
 
 static const SPageInfo pm_pages[] PROGMEM =
@@ -160,7 +180,7 @@ static const SPageInfo pm_pages[] PROGMEM =
     {5, &DrawBackgroundPage0},
     {3, &DrawBackgroundPage1},
     {5, &DrawBackgroundPage2},
-    {3, &DrawBackgroundPage3},
+    {4, &DrawBackgroundPage3},
 };
 
 // ***
@@ -244,6 +264,7 @@ int8_t DrawBackgroundPage3()
         DRO_STR(28, YLine2, S, "stop:", 5),
         DRO_STR(28, YLine3, S, "start:", 6),
         DRO_STR(28, YLine4, S, "maximum:", 8),
+        DRO_STR(7, YLine5, S, "Critical temperature:", 21),
         DRO_END
     };
     display::DrawObjects(pm_bgObjects, CLR_RED_BEAUTIFUL, CLR_WHITE);
